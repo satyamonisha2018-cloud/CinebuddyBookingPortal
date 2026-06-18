@@ -1,0 +1,1523 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cinebuddy Booking Checker</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #091018;
+      --bg-soft: #0f1824;
+      --panel: rgba(10, 18, 28, 0.84);
+      --panel-strong: rgba(16, 24, 37, 0.96);
+      --text: #f4f7fb;
+      --muted: #a8b3c5;
+      --line: rgba(175, 190, 214, 0.18);
+      --accent: #ffd166;
+      --accent-2: #53d8fb;
+      --danger: #ff6b6b;
+      --success: #67e8a8;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      height: 100%;
+      overflow: auto;
+      background:
+        radial-gradient(circle at top left, rgba(83, 216, 251, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(255, 209, 102, 0.16), transparent 28%),
+        linear-gradient(160deg, #07111b 0%, #091018 44%, #05080d 100%);
+      color: var(--text);
+      font-family: "Trebuchet MS", "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent 92%);
+      opacity: 0.45;
+    }
+
+    .wrap {
+      width: min(1380px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 12px 0 16px;
+      position: relative;
+      z-index: 1;
+      height: 100%;
+    }
+
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(10, 18, 28, 0.9), rgba(13, 21, 34, 0.74));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 26px 80px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand-block {
+      display: grid;
+      gap: 4px;
+    }
+
+    .brand-kicker {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.74rem;
+      font-weight: 800;
+    }
+
+    .brand-name {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.55rem;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-note {
+      max-width: 72ch;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .brand-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .brand-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e6eef9;
+      font-size: 0.84rem;
+      white-space: nowrap;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 12px 14px 14px;
+      min-height: 0;
+      background: linear-gradient(180deg, rgba(14, 22, 34, 0.92), rgba(10, 18, 28, 0.9));
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .panel h2 {
+      margin: 0 0 6px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.08rem;
+      letter-spacing: -0.02em;
+    }
+
+    .panel .sub {
+      margin: 0 0 10px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.88rem;
+    }
+
+    form {
+      display: grid;
+      gap: 8px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .account-picker {
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .account-picker-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .account-picker-count {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .account-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .account-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(6, 11, 18, 0.42);
+      color: #dfe7f3;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.84rem;
+    }
+
+    .account-option input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 0.92rem;
+      color: #dfe7f3;
+    }
+
+    input, select, button, textarea {
+      font: inherit;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      background: rgba(6, 11, 18, 0.82);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(83, 216, 251, 0.8);
+      background: rgba(10, 17, 26, 0.92);
+      transform: translateY(-1px);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .transcript-box {
+      display: none;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(83, 216, 251, 0.25);
+      background: rgba(83, 216, 251, 0.06);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #c8e8f8;
+    }
+
+    .transcript-box.visible { display: block; }
+
+    .transcript-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-2);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      color: #06111b;
+      font-weight: 700;
+      font-size: 0.88rem;
+      background: linear-gradient(135deg, var(--accent), #ffdf8f);
+      box-shadow: 0 14px 30px rgba(255, 209, 102, 0.22);
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+    }
+
+    button.danger {
+      color: #fff;
+      background: linear-gradient(135deg, #ff6b6b, #ff8d8d);
+      box-shadow: 0 14px 30px rgba(255, 107, 107, 0.18);
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #dee7f4;
+      font-size: 0.9rem;
+    }
+
+    .check-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .result-banner {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      line-height: 1.55;
+      font-size: 0.86rem;
+    }
+
+    .result-banner.good {
+      border-color: rgba(103, 232, 168, 0.28);
+      background: rgba(103, 232, 168, 0.08);
+    }
+
+    .result-banner.bad {
+      border-color: rgba(255, 107, 107, 0.28);
+      background: rgba(255, 107, 107, 0.08);
+    }
+
+    .zone-pill {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.84rem;
+    }
+
+    .zone-pill.good {
+      border-color: rgba(103, 232, 168, 0.22);
+      background: rgba(103, 232, 168, 0.08);
+      color: #d6fce6;
+    }
+
+    .zone-pill.bad {
+      border-color: rgba(255, 107, 107, 0.22);
+      background: rgba(255, 107, 107, 0.08);
+      color: #ffd5d5;
+    }
+
+    .account-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .account-card {
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px;
+      min-height: 74px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .account-card.available {
+      border-color: rgba(103, 232, 168, 0.22);
+      background: linear-gradient(180deg, rgba(103, 232, 168, 0.12), rgba(255, 255, 255, 0.04));
+    }
+
+    .account-card.unavailable {
+      border-color: rgba(255, 107, 107, 0.22);
+      background: linear-gradient(180deg, rgba(255, 107, 107, 0.12), rgba(255, 255, 255, 0.04));
+    }
+
+    .account-name {
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .reason {
+      color: var(--muted);
+      font-size: 0.89rem;
+      line-height: 1.45;
+    }
+
+    .ledger {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .ledger[hidden] {
+      display: none;
+    }
+
+    .ledger-date-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ledger-date-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 209, 102, 0.18);
+    }
+
+    .ledger-date-header .date-badge {
+      background: rgba(255, 209, 102, 0.12);
+      border: 1px solid rgba(255, 209, 102, 0.25);
+      border-radius: 6px;
+      padding: 2px 7px;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    .ledger-date-header .today-tag {
+      font-size: 0.7rem;
+      color: var(--accent-2);
+      background: rgba(83, 216, 251, 0.1);
+      border: 1px solid rgba(83, 216, 251, 0.25);
+      border-radius: 5px;
+      padding: 1px 6px;
+    }
+
+    .ledger-item {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr 0.6fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .void-btn {
+      appearance: none;
+      border: 1px solid rgba(255, 107, 107, 0.35);
+      border-radius: 8px;
+      padding: 5px 9px;
+      cursor: pointer;
+      color: #ff9999;
+      font-weight: 700;
+      font-size: 0.8rem;
+      background: rgba(255, 107, 107, 0.1);
+      box-shadow: none;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .void-btn:hover {
+      background: rgba(255, 107, 107, 0.22);
+      border-color: rgba(255, 107, 107, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .ledger-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .ledger-item span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .small {
+      font-size: 0.88rem;
+    }
+
+    .footerbar {
+      display: none;
+    }
+
+    .empty {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px dashed rgba(255, 255, 255, 0.14);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .account-grid, .grid-2 { grid-template-columns: 1fr; }
+      .account-options { grid-template-columns: 1fr; }
+      .ledger-item { grid-template-columns: 1fr 1fr; }
+      .ledger-item > :last-child { grid-column: 1 / -1; justify-self: start; }
+      .panel { min-height: auto; }
+      .masthead { flex-direction: column; align-items: flex-start; }
+      .brand-pills { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <div class="brand-block">
+        <div class="brand-kicker">Regal Unlimited assistant</div>
+        <div class="brand-name">Cinebuddy Booking Checker</div>
+        <div class="brand-note">A focused workspace for multi-account booking, timezone inference, and quick checks that stays fast, clear, and easy to trust.</div>
+      </div>
+      <div class="brand-pills">
+        <div class="brand-pill">Voice fill</div>
+        <div class="brand-pill">Auto timezone</div>
+        <div class="brand-pill">Multi-account booking</div>
+      </div>
+    </header>
+    <section class="layout">
+      <div class="panel" id="bookingPanel">
+        <h2>Booking entry</h2>
+        <p class="sub">Enter the booking once and save it across the selected accounts.</p>
+
+        <form id="bookingForm">
+          <div class="grid-2">
+            <label>
+              Date
+              <input type="date" id="bookingDate" required />
+            </label>
+            <label>
+              State or region
+              <input type="text" id="bookingState" placeholder="Example: Virginia or VA" />
+            </label>
+          </div>
+
+          <label>
+            Theater
+            <input type="text" id="bookingTheater" placeholder="Example: Regal Indian Lake" required />
+          </label>
+
+          <div class="zone-pill" id="bookingZoneHint">Timezone will be inferred from theater or state.</div>
+
+          <div class="grid-2">
+            <label>
+              Showtime
+              <input type="time" id="bookingTime" required />
+            </label>
+            <div class="account-picker">
+              <div class="account-picker-bar">
+                <label style="gap:0.35rem;">
+                  Accounts
+                  <span class="account-picker-count" id="bookingAccountCount">0 selected</span>
+                </label>
+                <div class="actions" style="margin-top:0;">
+                  <button type="button" class="secondary" id="selectAllAccountsBtn">Select all</button>
+                  <button type="button" class="secondary" id="clearAccountsBtn">Clear</button>
+                </div>
+              </div>
+              <div class="account-options" id="bookingAccountOptions"></div>
+            </div>
+          </div>
+
+          <label>
+            Movie name
+            <input type="text" id="bookingMovie" placeholder="Example: ABC" required />
+          </label>
+
+          <div class="actions">
+            <button type="submit">Save booking</button>
+            <button type="button" class="secondary" id="useTodayBtn">Use today</button>
+            <button type="button" class="secondary" id="voiceFillBtn">Voice fill</button>
+          </div>
+          <div class="transcript-box" id="bookingTranscript">
+            <div class="transcript-label">Heard</div>
+            <span id="bookingTranscriptText"></span>
+          </div>
+        </form>
+
+        <h2 id="ledgerHeading" style="margin:14px 0 0; display:none; font-family:Georgia,'Times New Roman',serif; font-size:1.02rem; letter-spacing:-0.02em;">Saved bookings</h2>
+        <div id="bookingLedger" class="ledger" hidden></div>
+      </div>
+
+      <div class="panel" id="checkerPanel">
+        <div class="check-header">
+          <div>
+            <h2>Availability checker</h2>
+            <p class="sub" style="margin-bottom:0;">Enter the movie, date, time, and theater.</p>
+          </div>
+          <div class="chip" id="activeDayChip">No active day</div>
+        </div>
+
+        <form id="checkForm">
+          <div class="grid-2">
+            <label>
+              Date
+              <input type="date" id="checkDate" required />
+            </label>
+            <label>
+              State or region
+              <input type="text" id="checkState" placeholder="Example: Virginia or VA" />
+            </label>
+          </div>
+
+          <label>
+            Theater
+            <input type="text" id="checkTheater" placeholder="Example: Regal Indian Lake" required />
+          </label>
+
+          <div class="zone-pill" id="checkZoneHint">Timezone will be inferred from theater or state.</div>
+
+          <div class="grid-2">
+            <label>
+              Showtime
+              <input type="time" id="checkTime" required />
+            </label>
+            <label>
+              Movie name
+              <input type="text" id="checkMovie" placeholder="Example: ABC" required />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="submit">Check accounts</button>
+            <button type="button" class="secondary" id="syncBtn">Sync from booking form</button>
+            <button type="button" class="secondary" id="voiceCheckBtn">Voice fill</button>
+          </div>
+          <div class="transcript-box" id="checkTranscript">
+            <div class="transcript-label">Heard</div>
+            <span id="checkTranscriptText"></span>
+          </div>
+        </form>
+
+        <div id="checkSummary" class="result-banner">Enter a request and run the checker.</div>
+        <div class="account-grid" id="accountGrid"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "cinebuddy.bookingChecker.v1";
+    const ACCOUNTS = [
+      "Satyaam",
+      "Satyaap",
+      "Satyamonisha 2018",
+      "Vamsy.24",
+      "DeathNote",
+      "Vamsi.fall",
+      "Strangerthng",
+      "mcvamsi",
+      "Vamsi Krishna Reddy Lekala",
+    ];
+
+    const timezoneLabel = {
+      "America/Chicago": "CST / Central",
+      "America/New_York": "EST / Eastern",
+      "America/Los_Angeles": "PST / Pacific",
+    };
+
+    const els = {
+      bookingForm: document.getElementById("bookingForm"),
+      checkForm: document.getElementById("checkForm"),
+      bookingPanel: document.getElementById("bookingPanel"),
+      checkerPanel: document.getElementById("checkerPanel"),
+      bookingDate: document.getElementById("bookingDate"),
+      bookingTime: document.getElementById("bookingTime"),
+      bookingAccountOptions: document.getElementById("bookingAccountOptions"),
+      bookingAccountCount: document.getElementById("bookingAccountCount"),
+      bookingMovie: document.getElementById("bookingMovie"),
+      bookingTheater: document.getElementById("bookingTheater"),
+      bookingState: document.getElementById("bookingState"),
+      bookingZoneHint: document.getElementById("bookingZoneHint"),
+      checkDate: document.getElementById("checkDate"),
+      checkTime: document.getElementById("checkTime"),
+      checkMovie: document.getElementById("checkMovie"),
+      checkTheater: document.getElementById("checkTheater"),
+      checkState: document.getElementById("checkState"),
+      checkZoneHint: document.getElementById("checkZoneHint"),
+      bookingLedger: document.getElementById("bookingLedger"),
+      checkSummary: document.getElementById("checkSummary"),
+      accountGrid: document.getElementById("accountGrid"),
+      accountCount: document.getElementById("accountCount"),
+      bookingCount: document.getElementById("bookingCount"),
+      activeDayChip: document.getElementById("activeDayChip"),
+      useTodayBtn: document.getElementById("useTodayBtn"),
+      voiceFillBtn: document.getElementById("voiceFillBtn"),
+      selectAllAccountsBtn: document.getElementById("selectAllAccountsBtn"),
+      clearAccountsBtn: document.getElementById("clearAccountsBtn"),
+      syncBtn: document.getElementById("syncBtn"),
+      voiceCheckBtn: document.getElementById("voiceCheckBtn"),
+      ledgerHeading: document.getElementById("ledgerHeading"),
+      bookingTranscript: document.getElementById("bookingTranscript"),
+      bookingTranscriptText: document.getElementById("bookingTranscriptText"),
+      checkTranscript: document.getElementById("checkTranscript"),
+      checkTranscriptText: document.getElementById("checkTranscriptText"),
+    };
+
+    const speechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+
+    const state = loadState();
+
+    function purgePastDays(days) {
+      const today = todayLocalDate();
+      for (const dateStr of Object.keys(days)) {
+        if (dateStr < today) delete days[dateStr];
+      }
+    }
+
+    function loadState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        if (parsed.sessionDate && parsed.sessionDate !== todayLocalDate()) {
+          if (parsed.days && typeof parsed.days === "object") purgePastDays(parsed.days);
+          parsed.sessionDate = todayLocalDate();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        }
+        return normalizeState(parsed);
+      } catch {
+        return { days: {}, sessionDate: todayLocalDate() };
+      }
+    }
+
+    function normalizeState(raw) {
+      if (!raw || typeof raw !== "object") return { days: {}, sessionDate: todayLocalDate() };
+      if (!raw.days || typeof raw.days !== "object") return { days: {}, sessionDate: todayLocalDate() };
+      return { days: raw.days, sessionDate: raw.sessionDate || todayLocalDate() };
+    }
+
+    function saveState() {
+      state.sessionDate = todayLocalDate();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function scheduleMidnightReset() {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+      const msUntilMidnight = midnight - now;
+      setTimeout(() => {
+        purgePastDays(state.days);
+        state.sessionDate = todayLocalDate();
+        saveState();
+        const today = todayLocalDate();
+        els.bookingDate.value = today;
+        els.checkDate.value = today;
+        renderLedger(today);
+        syncActiveDay(today);
+        refreshZoneHints();
+        renderAvailability(today, "12:00", getCheckZoneInfo(), "");
+        scheduleMidnightReset();
+      }, msUntilMidnight);
+    }
+
+    function todayLocalDate() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function normalizeMovie(text) {
+      return (text || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "")
+        .trim();
+    }
+
+    function normalizeText(text) {
+      return (text || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    const TIMEZONE_PATTERNS = [
+      {
+        zone: "America/New_York",
+        label: "EST / Eastern",
+        tokens: [
+          "connecticut", "ct", "delaware", "de", "district of columbia", "dc",
+          "florida", "fl", "georgia", "ga", "indiana", "in",
+          "kentucky", "ky", "maine", "me", "maryland", "md",
+          "massachusetts", "ma", "michigan", "mi",
+          "new hampshire", "nh", "new jersey", "nj", "new york", "ny",
+          "north carolina", "nc", "ohio", "oh", "pennsylvania", "pa",
+          "rhode island", "ri", "south carolina", "sc", "vermont", "vt",
+          "virginia", "va", "west virginia", "wv",
+        ],
+      },
+      {
+        zone: "America/Chicago",
+        label: "CST / Central",
+        tokens: [
+          "alabama", "al", "arkansas", "ar", "illinois", "il", "iowa", "ia",
+          "kansas", "ks", "louisiana", "la", "minnesota", "mn",
+          "mississippi", "ms", "missouri", "mo", "nebraska", "ne",
+          "north dakota", "nd", "oklahoma", "ok", "south dakota", "sd",
+          "tennessee", "tn", "texas", "tx", "wisconsin", "wi",
+        ],
+      },
+      {
+        zone: "America/Denver",
+        label: "MST / Mountain",
+        tokens: ["arizona", "az", "colorado", "co", "idaho", "id", "montana", "mt", "new mexico", "nm", "utah", "ut", "wyoming", "wy"],
+      },
+      {
+        zone: "America/Los_Angeles",
+        label: "PST / Pacific",
+        tokens: ["california", "ca", "nevada", "nv", "oregon", "or", "washington", "wa"],
+      },
+      {
+        zone: "America/Anchorage",
+        label: "AKST / Alaska",
+        tokens: ["alaska", "ak"],
+      },
+      {
+        zone: "Pacific/Honolulu",
+        label: "HST / Hawaii",
+        tokens: ["hawaii", "hi"],
+      },
+    ];
+
+    function detectTimeZone(theater, state) {
+      const combined = `${normalizeText(theater)} ${normalizeText(state)}`.trim();
+      if (!combined) return null;
+
+      for (const rule of TIMEZONE_PATTERNS) {
+        const matched = rule.tokens.some((token) => {
+          const esc = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          return new RegExp(`(?:^|\\s)${esc}(?:\\s|$)`).test(combined);
+        });
+        if (matched) return { zone: rule.zone, label: rule.label, source: state ? "state" : "theater" };
+      }
+
+      return null;
+    }
+
+    function zoneHintText(zoneInfo, hasInput) {
+      if (!zoneInfo) {
+        if (!hasInput) {
+          return { text: "Add a theater or state and I will infer the timezone automatically.", state: "neutral" };
+        }
+        return { text: "Timezone could not be inferred. Add a state or a more specific theater name.", state: "bad" };
+      }
+      return { text: `Timezone inferred: ${zoneInfo.label}${zoneInfo.source ? ` from ${zoneInfo.source}` : ""}.`, state: "good" };
+    }
+
+    function parseLocalDateTime(dateStr, timeStr) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const [hour, minute] = timeStr.split(":").map(Number);
+      return { year, month, day, hour, minute };
+    }
+
+    function formatInZone(date, timeZone) {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(date);
+    }
+
+    function zonedToUtcTimestamp(dateStr, timeStr, timeZone) {
+      const target = parseLocalDateTime(dateStr, timeStr);
+      let utcMs = Date.UTC(target.year, target.month - 1, target.day, target.hour, target.minute, 0, 0);
+      const dtf = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+      });
+
+      for (let i = 0; i < 4; i++) {
+        const parts = dtf.formatToParts(new Date(utcMs));
+        const current = {};
+        for (const part of parts) {
+          if (part.type !== "literal") current[part.type] = Number(part.value);
+        }
+
+        let currentHour = current.hour;
+        if (currentHour === 24) currentHour = 0;
+
+        const localAsUtc = Date.UTC(current.year, current.month - 1, current.day, currentHour, current.minute, 0, 0);
+        const targetAsUtc = Date.UTC(target.year, target.month - 1, target.day, target.hour, target.minute, 0, 0);
+        const diff = localAsUtc - targetAsUtc;
+        if (diff === 0) break;
+        utcMs -= diff;
+      }
+
+      return utcMs;
+    }
+
+    function getDay(dateStr) {
+      return state.days[dateStr] || [];
+    }
+
+    function setDay(dateStr, bookings) {
+      state.days[dateStr] = bookings;
+      saveState();
+    }
+
+    function currentDayFromInputs() {
+      return els.checkDate.value || els.bookingDate.value || todayLocalDate();
+    }
+
+    function prettyTimestamp(dateStr, timeStr, zone) {
+      const utc = zonedToUtcTimestamp(dateStr, timeStr, zone);
+      return formatInZone(new Date(utc), zone);
+    }
+
+    function setZoneHint(element, zoneInfo, hasInput) {
+      const hint = zoneHintText(zoneInfo, hasInput);
+      element.textContent = hint.text;
+      element.classList.toggle("good", hint.state === "good");
+      element.classList.toggle("bad", hint.state === "bad");
+    }
+
+    function getBookingZoneInfo() {
+      return detectTimeZone(els.bookingTheater.value, els.bookingState.value);
+    }
+
+    function getCheckZoneInfo() {
+      return detectTimeZone(els.checkTheater.value, els.checkState.value);
+    }
+
+    function syncActiveDay(dateStr) {
+      els.activeDayChip.textContent = dateStr ? `Active day: ${dateStr}` : "No active day";
+      if (els.bookingCount) els.bookingCount.textContent = String(getDay(dateStr).length);
+    }
+
+    function populateAccounts() {
+      els.bookingAccountOptions.innerHTML = ACCOUNTS.map((account, index) => `
+        <label class="account-option">
+          <input type="checkbox" name="bookingAccounts" value="${escapeHtml(account)}" ${index === 0 ? "checked" : ""} />
+          <span>${escapeHtml(account)}</span>
+        </label>
+      `).join("");
+      if (els.accountCount) els.accountCount.textContent = String(ACCOUNTS.length);
+      updateSelectedAccountCount();
+    }
+
+    function getSelectedBookingAccounts() {
+      return Array.from(els.bookingAccountOptions.querySelectorAll('input[name="bookingAccounts"]:checked')).map((input) => input.value);
+    }
+
+    function updateSelectedAccountCount() {
+      const count = getSelectedBookingAccounts().length;
+      els.bookingAccountCount.textContent = `${count} selected`;
+    }
+
+    function setAllBookingAccounts(selected) {
+      els.bookingAccountOptions.querySelectorAll('input[name="bookingAccounts"]').forEach((input) => {
+        input.checked = selected;
+      });
+      updateSelectedAccountCount();
+    }
+
+    function conflictSummary(existing, requestedMovie) {
+      const normalizedMovie = normalizeMovie(requestedMovie);
+      const sameMovie = existing.find((entry) => normalizeMovie(entry.movie) === normalizedMovie);
+      if (sameMovie) {
+        return {
+          available: false,
+          reason: `Already booked this movie today at ${sameMovie.time} ${timezoneLabel[sameMovie.timeZone]}.`,
+          conflict: sameMovie,
+          type: "movie",
+        };
+      }
+      return { available: true, reason: "Open for booking.", conflict: null, type: "none" };
+    }
+
+    function evaluateAccount(account, dateStr, movie, timeStr, zone) {
+      const bookings = getDay(dateStr).filter((entry) => entry.account === account);
+      const movieCheck = conflictSummary(bookings, movie);
+      if (!movieCheck.available) return movieCheck;
+
+      const requestedUtc = zonedToUtcTimestamp(dateStr, timeStr, zone);
+      const conflict = bookings.find((entry) => Math.abs(entry.timestampUtc - requestedUtc) < 90 * 60 * 1000);
+      if (conflict) {
+        const deltaMinutes = Math.round(Math.abs(conflict.timestampUtc - requestedUtc) / 60000);
+        return {
+          available: false,
+          reason: `Blocked by ${conflict.movie} at ${conflict.time} ${timezoneLabel[conflict.timeZone]} (${deltaMinutes} minute gap).`,
+          conflict,
+          type: "gap",
+        };
+      }
+
+      return { available: true, reason: "Meets both rules.", conflict: null, type: "none" };
+    }
+
+    function renderLedger(activeDateStr) {
+      syncActiveDay(activeDateStr);
+      const today = todayLocalDate();
+      const sortedDates = Object.keys(state.days)
+        .filter((d) => d >= today && state.days[d] && state.days[d].length)
+        .sort();
+
+      if (!sortedDates.length) {
+        els.bookingLedger.hidden = true;
+        els.bookingLedger.innerHTML = "";
+        els.ledgerHeading.style.display = "none";
+        return;
+      }
+
+      els.ledgerHeading.style.display = "";
+      els.bookingLedger.hidden = false;
+      els.bookingLedger.innerHTML = sortedDates.map((dateStr) => {
+        const bookings = state.days[dateStr].slice().sort((a, b) => a.timestampUtc - b.timestampUtc);
+        const isToday = dateStr === today;
+        const isActive = dateStr === activeDateStr;
+        const label = isToday ? "Today" : dateStr;
+        return `
+          <div class="ledger-date-group">
+            <div class="ledger-date-header">
+              <span class="date-badge">${escapeHtml(label)}</span>
+              ${isToday ? '<span class="today-tag">today</span>' : ""}
+              ${isActive && !isToday ? '<span class="today-tag">selected</span>' : ""}
+            </div>
+            ${bookings.map((booking) => `
+              <div class="ledger-item">
+                <div>
+                  <strong>${escapeHtml(booking.movie)}</strong>
+                  <span>${escapeHtml(booking.account)} · ${escapeHtml(booking.theater)}</span>
+                </div>
+                <div>
+                  <strong>${escapeHtml(booking.time)} ${escapeHtml(timezoneLabel[booking.timeZone] || booking.timeZone)}</strong>
+                  <span>${escapeHtml(booking.date)}</span>
+                </div>
+                <div>
+                  <strong>Saved</strong>
+                  <span>${escapeHtml(formatInZone(new Date(booking.timestampUtc), booking.timeZone))}</span>
+                </div>
+                <button type="button" class="void-btn" data-date="${escapeHtml(booking.date)}" data-id="${escapeHtml(booking.id)}">Void</button>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function renderAvailability(dateStr, timeStr, zoneInfo, movie) {
+      if (!zoneInfo) {
+        els.checkSummary.className = "result-banner bad";
+        els.checkSummary.textContent = "Add a state or a more specific theater name so I can infer the time zone.";
+        els.accountGrid.innerHTML = '<div class="empty">No results until the timezone can be inferred.</div>';
+        return;
+      }
+
+      const zone = zoneInfo.zone;
+      const results = ACCOUNTS.map((account) => ({
+        account,
+        ...evaluateAccount(account, dateStr, movie, timeStr, zone),
+      }));
+
+      const available = results.filter((entry) => entry.available);
+      const requestedStamp = prettyTimestamp(dateStr, timeStr, zone);
+
+      els.checkSummary.className = `result-banner ${available.length ? "good" : "bad"}`;
+      els.checkSummary.innerHTML = available.length
+        ? `<strong>${available.length} accounts are available.</strong> ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`
+        : `<strong>No accounts are available.</strong> Every account is blocked by the same-movie rule or the 90-minute gap rule for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
+
+      els.accountGrid.innerHTML = results.map((entry) => `
+        <article class="account-card ${entry.available ? "available" : "unavailable"}">
+          <div class="account-name">${escapeHtml(entry.account)}</div>
+          <div class="reason">${escapeHtml(entry.reason)}</div>
+        </article>
+      `).join("");
+    }
+
+    function addBooking(record) {
+      const bookings = getDay(record.date).slice();
+      bookings.push(record);
+      setDay(record.date, bookings);
+    }
+
+    function deleteBooking(dateStr, bookingId) {
+      const bookings = getDay(dateStr).filter((entry) => entry.id !== bookingId);
+      setDay(dateStr, bookings);
+      renderLedger(dateStr);
+      const checkDate = els.checkDate.value;
+      if (checkDate) renderAvailability(checkDate, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+    }
+
+    function fillToday() {
+      const today = todayLocalDate();
+      els.bookingDate.value = today;
+      els.checkDate.value = today;
+      syncActiveDay(today);
+      renderLedger(today);
+    }
+
+    function inferZoneLabel(zoneInfo) {
+      return zoneInfo ? zoneInfo.label : "unknown";
+    }
+
+    const MONTH_INDEX = {
+      january: 0,
+      february: 1,
+      march: 2,
+      april: 3,
+      may: 4,
+      june: 5,
+      july: 6,
+      august: 7,
+      september: 8,
+      october: 9,
+      november: 10,
+      december: 11,
+    };
+
+    const STATE_TOKENS = Array.from(new Set(TIMEZONE_PATTERNS.flatMap((rule) => rule.tokens))).sort((a, b) => b.length - a.length);
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function containsToken(text, token) {
+      const escaped = escapeRegExp(token);
+      const pattern = token.includes(" ") ? new RegExp(`(^|\\s)${escaped}(\\s|$)`) : new RegExp(`\\b${escaped}\\b`);
+      return pattern.test(text);
+    }
+
+    function extractDateFromSpeech(text) {
+      const today = new Date();
+      const lower = text.toLowerCase();
+
+      if (/\btoday\b/.test(lower)) return todayLocalDate();
+      if (/\btomorrow\b/.test(lower)) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toISOString().slice(0, 10);
+      }
+
+      const isoMatch = lower.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      if (isoMatch) return isoMatch[1];
+
+      const monthMatch = lower.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?\b/);
+      if (monthMatch) {
+        const month = MONTH_INDEX[monthMatch[1]];
+        const day = Number(monthMatch[2]);
+        const year = monthMatch[3] ? Number(monthMatch[3]) : today.getFullYear();
+        const resolved = new Date(year, month, day);
+        if (!monthMatch[3] && resolved < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+          resolved.setFullYear(year + 1);
+        }
+        return `${resolved.getFullYear()}-${String(resolved.getMonth() + 1).padStart(2, "0")}-${String(resolved.getDate()).padStart(2, "0")}`;
+      }
+
+      const numericMatch = lower.match(/\b(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?\b/);
+      if (numericMatch) {
+        const first = Number(numericMatch[1]);
+        const second = Number(numericMatch[2]);
+        const year = numericMatch[3] ? Number(numericMatch[3].length === 2 ? `20${numericMatch[3]}` : numericMatch[3]) : today.getFullYear();
+        const resolved = new Date(year, first - 1, second);
+        return `${resolved.getFullYear()}-${String(resolved.getMonth() + 1).padStart(2, "0")}-${String(resolved.getDate()).padStart(2, "0")}`;
+      }
+
+      return null;
+    }
+
+    function extractTimeFromSpeech(text) {
+      const lower = text.toLowerCase();
+
+      const ampmMatch = lower.match(/\b(\d{1,2})(?:[:\s](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/);
+      if (ampmMatch) {
+        let hour = Number(ampmMatch[1]);
+        const minute = Number(ampmMatch[2] || 0);
+        const isPM = ampmMatch[3].startsWith("p");
+        if (isPM && hour < 12) hour += 12;
+        if (!isPM && hour === 12) hour = 0;
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      }
+
+      const h24Match = lower.match(/\b(\d{1,2}):(\d{2})\b/);
+      if (h24Match) {
+        return `${String(Number(h24Match[1])).padStart(2, "0")}:${h24Match[2]}`;
+      }
+
+      const looseMatch = lower.match(/\b(\d{1,2})\s+(\d{2})\b/);
+      if (looseMatch && /\b(am|pm|a\.m\.|p\.m\.)\b/.test(lower)) {
+        let hour = Number(looseMatch[1]);
+        const minute = Number(looseMatch[2]);
+        const isPM = /\b(pm|p\.m\.)\b/.test(lower);
+        if (isPM && hour < 12) hour += 12;
+        if (!isPM && hour === 12) hour = 0;
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      }
+
+      return null;
+    }
+
+    function extractStateFromSpeech(text) {
+      const lower = text.toLowerCase();
+      for (const token of STATE_TOKENS) {
+        if (containsToken(lower, token)) return token;
+      }
+      const statePhrase = lower.match(/\b(?:in|from|state|region)\s+([a-z][a-z\s]+?)(?=\s+(?:at|on|for|with|movie|theater|theatre|time|account|accounts)\b|$)/);
+      if (statePhrase) return statePhrase[1].trim();
+      return null;
+    }
+
+    function extractSpokenFields(text) {
+      const s = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
+
+      const fields = {
+        date: null,
+        time: null,
+        theater: null,
+        state: null,
+        movie: null,
+        accounts: null,
+        target: /\b(check|availability|available|checker)\b/.test(s) ? "checker" : "booking",
+      };
+
+      fields.date = extractDateFromSpeech(s);
+      fields.time = extractTimeFromSpeech(s);
+      fields.state = extractStateFromSpeech(s);
+
+      // Theater — "Regal [words]" is the standard chain name pattern
+      const regalMatch = s.match(/\b(regal(?:\s+\w+){1,5})/i);
+      if (regalMatch) {
+        // Trim trailing stop-words that aren't part of the name
+        fields.theater = regalMatch[1].replace(/\s+(in|on|at|for|and|the|virginia|texas|california|florida|georgia|ohio|illinois|pennsylvania|maryland|michigan|indiana|tennessee|colorado|washington|arizona|minnesota|wisconsin|louisiana|oklahoma|nevada|utah|connecticut|delaware)\s*$/, "").trim();
+      } else {
+        const theaterKw = s.match(/\b(?:theater|theatre|cinema)\s+(.+?)(?=\s+(?:in|on|at\s+\d|for)\b|$)/i);
+        if (theaterKw) fields.theater = theaterKw[1].trim();
+      }
+
+      // Movie — ordered from most specific signal to least
+      const stopBoundary = "(?=\\s+(?:at\\s+regal|at\\s+theater|at\\s+theatre|in\\s+virginia|in\\s+texas|in\\s+california|in\\s+florida|in\\s+georgia|in\\s+ohio|in\\s+illinois|on\\s+june|on\\s+july|on\\s+august|on\\s+september|on\\s+october|on\\s+november|on\\s+december|on\\s+january|on\\s+february|on\\s+march|on\\s+april|on\\s+may|\\bat\\s+\\d|today|tomorrow)\\b|$)";
+      const moviePatterns = [
+        new RegExp(`\\b(?:movie|film|watching|watch|see|seeing)\\s+(?:is\\s+|called\\s+|named\\s+)?(.+?)${stopBoundary}`, "i"),
+        new RegExp(`\\b(?:booking?|book)\\s+(.+?)${stopBoundary}`, "i"),
+        new RegExp(`^(.+?)\\s+(?:at\\s+regal|at\\s+theater|at\\s+theatre)`, "i"),
+      ];
+      for (const pattern of moviePatterns) {
+        const m = s.match(pattern);
+        if (m && m[1] && m[1].trim().length > 1) {
+          fields.movie = m[1].trim();
+          break;
+        }
+      }
+
+      // Account matching
+      const spokenAccounts = ACCOUNTS.filter((account) => s.includes(normalizeText(account)));
+      if (spokenAccounts.length) fields.accounts = spokenAccounts;
+
+      return fields;
+    }
+
+    function applySelectedAccounts(accounts) {
+      if (!accounts || !accounts.length) return;
+      const accountLookup = new Set(accounts.map((account) => normalizeText(account)));
+      els.bookingAccountOptions.querySelectorAll('input[name="bookingAccounts"]').forEach((input) => {
+        input.checked = false;
+      });
+      els.bookingAccountOptions.querySelectorAll('input[name="bookingAccounts"]').forEach((input) => {
+        if (accountLookup.has(normalizeText(input.value))) {
+          input.checked = true;
+        }
+      });
+      updateSelectedAccountCount();
+    }
+
+    function applyVoiceFields(fields) {
+      if (fields.target === "checker") {
+        if (fields.date) els.checkDate.value = fields.date;
+        if (fields.time) els.checkTime.value = fields.time;
+        if (fields.theater) els.checkTheater.value = fields.theater;
+        if (fields.state) els.checkState.value = fields.state;
+        if (fields.movie) els.checkMovie.value = fields.movie;
+        if (fields.date) els.bookingDate.value = fields.date;
+      } else {
+        if (fields.date) els.bookingDate.value = fields.date;
+        if (fields.time) els.bookingTime.value = fields.time;
+        if (fields.theater) els.bookingTheater.value = fields.theater;
+        if (fields.state) els.bookingState.value = fields.state;
+        if (fields.movie) els.bookingMovie.value = fields.movie;
+        if (fields.date) els.checkDate.value = fields.date;
+      }
+
+      if (fields.target !== "checker" && fields.accounts && fields.accounts.length) {
+        applySelectedAccounts(fields.accounts);
+      }
+
+      refreshZoneHints();
+    }
+
+    function startVoiceFill(target) {
+      if (!speechRecognitionClass) {
+        alert("Voice recognition is not supported in this browser. Please use Chrome or Edge.");
+        return;
+      }
+
+      const btn = target === "booking" ? els.voiceFillBtn : els.voiceCheckBtn;
+      const transcriptBox = target === "booking" ? els.bookingTranscript : els.checkTranscript;
+      const transcriptText = target === "booking" ? els.bookingTranscriptText : els.checkTranscriptText;
+      const originalText = btn.textContent;
+
+      function resetBtn() {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+
+      function showTranscript(text) {
+        transcriptText.textContent = text;
+        transcriptBox.classList.add("visible");
+      }
+
+      const recognition = new speechRecognitionClass();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 3;
+      recognition.continuous = false;
+
+      recognition.onstart = () => {
+        btn.textContent = "Listening…";
+        btn.disabled = true;
+      };
+
+      recognition.onend = resetBtn;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        showTranscript(transcript);
+        const fields = extractSpokenFields(transcript);
+        fields.target = target;
+        applyVoiceFields(fields);
+      };
+
+      recognition.onerror = (event) => {
+        resetBtn();
+        switch (event.error) {
+          case "not-allowed":
+          case "permission-denied":
+            alert("Microphone access was blocked.\n\nClick the lock/mic icon in your browser's address bar and allow microphone access, then try again.");
+            break;
+          case "no-speech":
+            break;
+          case "audio-capture":
+            alert("No microphone detected. Please connect a microphone and try again.");
+            break;
+          case "network":
+            alert("Network error. Chrome's voice recognition requires an internet connection. Please check your connection and try again.");
+            break;
+          case "service-not-allowed":
+            alert("Voice recognition is blocked on local files in some browsers.\n\nTry opening the file in Edge, or serve it from a local server (e.g. VS Code Live Server).");
+            break;
+          default:
+            alert(`Voice recognition error: ${event.error}. Please try again.`);
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch (err) {
+        resetBtn();
+        alert("Could not start voice recognition. Please try again.");
+      }
+    }
+
+    function refreshZoneHints() {
+      setZoneHint(els.bookingZoneHint, getBookingZoneInfo(), Boolean(normalizeText(els.bookingTheater.value) || normalizeText(els.bookingState.value)));
+      setZoneHint(els.checkZoneHint, getCheckZoneInfo(), Boolean(normalizeText(els.checkTheater.value) || normalizeText(els.checkState.value)));
+    }
+
+    els.bookingForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const date = els.bookingDate.value;
+      const zoneInfo = getBookingZoneInfo();
+      if (!zoneInfo) {
+        setZoneHint(els.bookingZoneHint, zoneInfo);
+        alert("I could not infer the timezone from the booking theater/state. Add a state or a more specific theater name.");
+        return;
+      }
+      const timeZone = zoneInfo.zone;
+      const time = els.bookingTime.value;
+      const selectedAccounts = getSelectedBookingAccounts();
+      const movie = els.bookingMovie.value.trim();
+      const theater = els.bookingTheater.value.trim();
+      const stateOrRegion = els.bookingState.value.trim();
+
+      if (!selectedAccounts.length) {
+        alert("Select at least one account.");
+        return;
+      }
+
+      const timestampUtc = zonedToUtcTimestamp(date, time, timeZone);
+      selectedAccounts.forEach((account) => {
+        addBooking({
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+          date,
+          time,
+          timeZone,
+          timeZoneLabel: timezoneLabel[timeZone],
+          timeZoneSource: zoneInfo.source,
+          account,
+          movie,
+          theater,
+          stateOrRegion,
+          timestampUtc,
+        });
+      });
+
+      renderLedger(date);
+      refreshZoneHints();
+      renderAvailability(els.checkDate.value, els.checkTime.value || time, getCheckZoneInfo() || zoneInfo, els.checkMovie.value || movie);
+      els.bookingMovie.value = "";
+      els.bookingTheater.value = "";
+      els.bookingState.value = "";
+      updateSelectedAccountCount();
+      els.bookingMovie.focus();
+    });
+
+    els.checkForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+    });
+
+    els.useTodayBtn.addEventListener("click", () => {
+      fillToday();
+    });
+
+    els.voiceFillBtn.addEventListener("click", () => startVoiceFill("booking"));
+    els.voiceCheckBtn.addEventListener("click", () => startVoiceFill("checker"));
+
+    els.selectAllAccountsBtn.addEventListener("click", () => {
+      setAllBookingAccounts(true);
+    });
+
+    els.clearAccountsBtn.addEventListener("click", () => {
+      setAllBookingAccounts(false);
+    });
+
+    els.bookingAccountOptions.addEventListener("change", updateSelectedAccountCount);
+
+    els.bookingLedger.addEventListener("click", (event) => {
+      const btn = event.target.closest(".void-btn");
+      if (!btn) return;
+      const { date, id } = btn.dataset;
+      if (date && id) deleteBooking(date, id);
+    });
+
+    els.syncBtn.addEventListener("click", () => {
+      els.checkDate.value = els.bookingDate.value;
+      els.checkTime.value = els.bookingTime.value;
+      els.checkMovie.value = els.bookingMovie.value.trim();
+      els.checkTheater.value = els.bookingTheater.value.trim();
+      els.checkState.value = els.bookingState.value.trim();
+      refreshZoneHints();
+      renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value);
+    });
+
+    [els.bookingDate, els.checkDate].forEach((input) => {
+      input.addEventListener("change", () => {
+        const date = input.value;
+        if (input === els.bookingDate && !els.checkDate.value) els.checkDate.value = date;
+        if (input === els.checkDate && !els.bookingDate.value) els.bookingDate.value = date;
+        renderLedger(date);
+        refreshZoneHints();
+      });
+    });
+
+    [els.bookingTheater, els.bookingState, els.checkTheater, els.checkState].forEach((input) => {
+      input.addEventListener("input", refreshZoneHints);
+      input.addEventListener("change", refreshZoneHints);
+    });
+
+    populateAccounts();
+    const today = todayLocalDate();
+    els.bookingDate.value = today;
+    els.checkDate.value = today;
+    renderLedger(today);
+    refreshZoneHints();
+    renderAvailability(today, "12:00", getCheckZoneInfo(), "");
+    scheduleMidnightReset();
+  </script>
+</body>
+</html>
