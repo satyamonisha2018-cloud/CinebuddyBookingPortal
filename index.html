@@ -1409,14 +1409,13 @@
         .filter((d) => d >= today && state.days[d] && state.days[d].length)
         .sort();
 
+      els.ledgerHeading.style.display = "";
       if (!sortedDates.length) {
-        els.bookingLedger.hidden = true;
-        els.bookingLedger.innerHTML = "";
-        els.ledgerHeading.style.display = "none";
+        els.bookingLedger.hidden = false;
+        els.bookingLedger.innerHTML = '<div class="empty">No saved bookings yet — entries you save will appear here.</div>';
         return;
       }
 
-      els.ledgerHeading.style.display = "";
       els.bookingLedger.hidden = false;
       els.bookingLedger.innerHTML = sortedDates.map((dateStr) => {
         const bookings = state.days[dateStr].slice().sort((a, b) => a.timestampUtc - b.timestampUtc);
@@ -2034,6 +2033,15 @@
       els.bookingTheater.value = "";
       els.bookingState.value = "";
       updateSelectedAccountCount();
+
+      // Confirm save and scroll the ledger into view so the user can see it
+      const savedCount = selectedAccounts.length;
+      const confirmBanner = document.createElement("div");
+      confirmBanner.style.cssText = "margin-top:8px;padding:8px 12px;border-radius:10px;border:1px solid rgba(103,232,168,0.35);background:rgba(103,232,168,0.1);color:#67e8a8;font-size:0.85rem;";
+      confirmBanner.textContent = `✓ Saved "${movie}" for ${savedCount} account${savedCount > 1 ? "s" : ""} — scroll down to see the ledger.`;
+      els.bookingForm.appendChild(confirmBanner);
+      setTimeout(() => confirmBanner.remove(), 4000);
+      els.bookingLedger.scrollIntoView({ behavior: "smooth", block: "nearest" });
       els.bookingMovie.focus();
     });
 
