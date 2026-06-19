@@ -1322,69 +1322,70 @@
         target: /\b(check|availability|available|checker)\b/.test(s) ? "checker" : "booking",
       };
 
-      fields.date = extractDateFromSpeech(s);
-      fields.time = extractTimeFromSpeech(s);
-      fields.state = extractStateFromSpeech(s);
+      // Keyword anchors that delimit fields — longer/more-specific phrases listed first
+      // so they win when they overlap with a shorter keyword at the same position.
+      const FIELD_KEYWORDS = [
+        { pattern: /\bstate\s+or\s+region\b/, field: "state"       },
+        { pattern: /\btheater\s+name[d]?\b/,  field: "theater"     },
+        { pattern: /\btheatre\s+name[d]?\b/,  field: "theater"     },
+        { pattern: /\bmovie\s+name[d]?\b/,    field: "movie"       },
+        { pattern: /\bfilm\s+name[d]?\b/,     field: "movie"       },
+        { pattern: /\bshow\s*time\b/,         field: "time_anchor" },
+        { pattern: /\btheater\b/,             field: "theater"     },
+        { pattern: /\btheatre\b/,             field: "theater"     },
+        { pattern: /\bmovie\b/,              field: "movie"       },
+        { pattern: /\bfilm\b/,               field: "movie"       },
+        { pattern: /\bstate\b/,              field: "state"       },
+        { pattern: /\bregion\b/,             field: "state"       },
+        { pattern: /\bdate\b/,              field: "date"        },
+      ];
 
-      // Build a clean working string — strip time, date words, state tokens, filler words
-      let w = s;
-      w = w.replace(/\b\d{1,2}:\d{2}(?:\s*(?:am|pm|a\.m\.|p\.m\.))?\b/gi, " ");
-      w = w.replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, " ");
-      w = w.replace(/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b/gi, " ");
-      w = w.replace(/\b\d{1,2}(?:st|nd|rd|th)?\b/g, " ");
-      w = w.replace(/\b(?:today|tomorrow|date|check|availability|available|checker|booking)\b/gi, " ");
-      const stateRe = new RegExp("(?:^|\\s)(?:" + STATE_TOKENS.map(escapeRegExp).join("|") + ")(?:\\s|$)", "gi");
-      w = w.replace(stateRe, " ").replace(/\s+/g, " ").trim();
-
-      // Anchors: "showtime" separates theater (before) from movie (after)
-      //          "movie/film/called/named" marks the start of the movie name
-      const showtimeIdx = w.search(/\bshowtime\b/i);
-      const movieKwIdx  = w.search(/\b(?:movie|film|called|named)\b/i);
-
-      let theaterRaw = "";
-      let movieRaw   = "";
-
-      if (showtimeIdx !== -1 && movieKwIdx !== -1) {
-        if (showtimeIdx < movieKwIdx) {
-          // "theater showtime … movie name"
-          theaterRaw = w.slice(0, showtimeIdx);
-          movieRaw   = w.slice(movieKwIdx).replace(/\b(?:movie|film|called|named)\b/i, "");
-        } else {
-          // "movie name showtime theater"
-          movieRaw   = w.slice(movieKwIdx, showtimeIdx).replace(/\b(?:movie|film|called|named)\b/i, "");
-          theaterRaw = w.slice(showtimeIdx + "showtime".length);
-        }
-      } else if (showtimeIdx !== -1) {
-        theaterRaw = w.slice(0, showtimeIdx);
-        movieRaw   = w.slice(showtimeIdx + "showtime".length);
-      } else if (movieKwIdx !== -1) {
-        theaterRaw = w.slice(0, movieKwIdx);
-        movieRaw   = w.slice(movieKwIdx).replace(/\b(?:movie|film|called|named)\b/i, "");
-      } else {
-        // No anchors — try "Regal …" for theater; rest is movie
-        const regalIdx = w.search(/\bregal\b/i);
-        if (regalIdx !== -1) {
-          const rm = w.slice(regalIdx).match(/\bregal(?:\s+\w+){1,5}/i);
-          if (rm) { theaterRaw = rm[0]; movieRaw = w.replace(rm[0], ""); }
-        } else {
-          // Short utterance with no anchors → treat whole thing as movie
-          if (w.trim().split(/\s+/).length <= 5) movieRaw = w;
+      // Find the first occurrence of each keyword pattern in the transcript.
+      // If a new match overlaps a span already claimed by an earlier (higher-priority) keyword, skip it.
+      const found = [];
+      for (const kw of FIELD_KEYWORDS) {
+        const m = kw.pattern.exec(s);
+        if (!m) continue;
+        const pos = m.index;
+        const end = pos + m[0].length;
+        if (!found.some(f => pos < f.end && end > f.pos)) {
+          found.push({ field: kw.field, pos, end });
         }
       }
 
-      // --- Theater ---
-      const theaterClean = theaterRaw.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
-      if (theaterClean.length > 1) {
-        let theater = toTitleCase(theaterClean);
-        if (!/^regal\b/i.test(theater)) theater = "Regal " + theater;
-        fields.theater = theater;
+      // Sort matches by position so we can slice segments between consecutive anchors.
+      found.sort((a, b) => a.pos - b.pos);
+
+      for (let i = 0; i < found.length; i++) {
+        const cur = found[i];
+        const nextPos = i + 1 < found.length ? found[i + 1].pos : s.length;
+        const segment = s.slice(cur.end, nextPos).trim();
+
+        if (cur.field === "date") {
+          fields.date = extractDateFromSpeech(segment) || fields.date;
+        } else if (cur.field === "time_anchor") {
+          fields.time = extractTimeFromSpeech(segment) || fields.time;
+        } else if (cur.field === "state") {
+          const matched = STATE_TOKENS.find(t => containsToken(segment, t));
+          fields.state = matched || (segment.length > 1 ? segment : null);
+        } else if (cur.field === "theater") {
+          const clean = segment.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
+          if (clean.length > 1) {
+            let theater = toTitleCase(clean);
+            if (!/^regal\b/i.test(theater)) theater = "Regal " + theater;
+            fields.theater = theater;
+          }
+        } else if (cur.field === "movie") {
+          const clean = segment.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
+          if (clean.length > 1) fields.movie = toTitleCase(clean);
+        }
       }
 
-      // --- Movie ---
-      const movieClean = movieRaw.replace(/\b(?:at|in|the|to|from|a|an|showtime)\b/gi, "").replace(/\s+/g, " ").trim();
-      if (movieClean.length > 1) fields.movie = toTitleCase(movieClean);
+      // Fallbacks: if date/time/state weren't tagged with a keyword, extract from the full transcript.
+      if (!fields.date)  fields.date  = extractDateFromSpeech(s);
+      if (!fields.time)  fields.time  = extractTimeFromSpeech(s);
+      if (!fields.state) fields.state = extractStateFromSpeech(s);
 
-      // Account matching
       const spokenAccounts = ACCOUNTS.filter(account => s.includes(normalizeText(account)));
       if (spokenAccounts.length) fields.accounts = spokenAccounts;
 
