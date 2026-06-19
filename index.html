@@ -1639,6 +1639,105 @@
       return str.replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    // Transliterate Telugu Unicode to approximate English (Latin) letters so the
+    // anchor-based parser can understand speech captured in te-IN recognition mode.
+    function transliterateTeluguToEnglish(text) {
+      if (!/[ఀ-౿]/.test(text)) return text;
+
+      const VIRAMA   = '్'; // ్  halant — suppresses inherent vowel
+      const ANUSVARA = 'ం'; // ం  nasal
+      const VISARGA  = 'ః'; // ః  aspiration
+
+      // Independent vowels
+      const IV = {
+        'అ':'a','ఆ':'a','ఇ':'i','ఈ':'i',
+        'ఉ':'u','ఊ':'u','ఋ':'ri','ఌ':'li',
+        'ఎ':'e','ఏ':'e','ఐ':'ai',
+        'ఒ':'o','ఓ':'o','ఔ':'au',
+      };
+
+      // Vowel signs (matras)
+      const VS = {
+        'ా':'a','ి':'i','ీ':'i',
+        'ు':'u','ూ':'u','ృ':'ri','ౄ':'ri',
+        'ె':'e','ే':'e','ై':'ai',
+        'ొ':'o','ో':'o','ౌ':'au',
+      };
+
+      // Consonants (value = romanised form WITHOUT inherent 'a')
+      const CO = {
+        'క':'k', 'ఖ':'kh','గ':'g', 'ఘ':'gh','ఙ':'ng',
+        'చ':'ch','ఛ':'chh','జ':'j', 'ఝ':'jh','ఞ':'ny',
+        'ట':'t', 'ఠ':'th','డ':'d', 'ఢ':'dh','ణ':'n',
+        'త':'t', 'థ':'th','ద':'d', 'ధ':'dh','న':'n',
+        'ప':'p', 'ఫ':'ph','బ':'b', 'భ':'bh','మ':'m',
+        'య':'y', 'ర':'r', 'ఱ':'r', 'ల':'l', 'ళ':'l',
+        'వ':'v', 'శ':'sh','ష':'sh','స':'s', 'హ':'h',
+        'ౘ':'ts','ౙ':'dz','ౚ':'r',
+      };
+
+      const chars = [...text]; // spread for correct surrogate handling
+      let out = '';
+      let i = 0;
+
+      while (i < chars.length) {
+        const ch = chars[i];
+        const cp = ch.codePointAt(0);
+
+        // Non-Telugu (ASCII, spaces, Latin digits) — pass through unchanged
+        if (cp < 0x0C00 || cp > 0x0C7F) { out += ch; i++; continue; }
+
+        if (ch === VISARGA) { out += 'ha'; i++; continue; }
+
+        // Lone anusvara (rare — normally follows a consonant below)
+        if (ch === ANUSVARA) { out += 'n'; i++; continue; }
+
+        // Independent vowel
+        if (IV[ch]) { out += IV[ch]; i++; continue; }
+
+        // Consonant
+        if (CO[ch]) {
+          out += CO[ch];
+          i++;
+          if (i >= chars.length) { out += 'a'; break; }
+
+          const nx = chars[i];
+
+          if (nx === VIRAMA) {
+            // No inherent vowel — consonant cluster, skip halant
+            i++;
+          } else if (VS[nx]) {
+            // Explicit vowel sign
+            out += VS[nx];
+            i++;
+            // Anusvara after a vowel sign (e.g. ి + ం = "in")
+            if (chars[i] === ANUSVARA) {
+              const afterN = chars[i + 1];
+              out += (!afterN || !CO[afterN]) ? 'm' : 'n';
+              i++;
+            }
+          } else if (nx === ANUSVARA) {
+            // Inherent 'a' followed by anusvara: "ban", "ram" etc.
+            out += 'a';
+            const afterN = chars[i + 1];
+            out += (!afterN || !CO[afterN]) ? 'm' : 'n';
+            i++;
+          } else if (nx === VISARGA) {
+            out += 'aha'; i++;
+          } else {
+            // Default inherent vowel 'a'
+            out += 'a';
+          }
+          continue;
+        }
+
+        // Unknown Telugu combining mark — skip
+        i++;
+      }
+
+      return out.replace(/\s+/g, ' ').trim();
+    }
+
     function extractSpokenFields(text) {
       const s = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
 
@@ -1814,8 +1913,12 @@
       recognition.onend = () => {
         clearTimeout(silenceTimer);
         resetBtn();
-        const transcript = finalTranscript.trim();
+        let transcript = finalTranscript.trim();
         if (transcript) {
+          // If Telugu script was captured, transliterate to Latin before parsing
+          if (/[ఀ-౿]/.test(transcript)) {
+            transcript = transliterateTeluguToEnglish(transcript);
+          }
           showTranscript(transcript);
           const fields = extractSpokenFields(transcript);
           fields.target = target;
