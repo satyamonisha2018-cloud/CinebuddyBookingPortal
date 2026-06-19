@@ -251,6 +251,46 @@
       margin-top: 4px;
     }
 
+    button.listening {
+      background: linear-gradient(135deg, #ff6b6b, #ff4444);
+      color: #fff;
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.5);
+      animation: mic-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes mic-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(255, 107, 107, 0.55); }
+      70%  { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);   }
+      100% { box-shadow: 0 0 0 0   rgba(255, 107, 107, 0);    }
+    }
+
+    .lang-toggle {
+      display: flex;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+
+    .lang-toggle button {
+      border-radius: 0;
+      padding: 10px 11px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      box-shadow: none;
+      border: 0;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .lang-toggle button:last-child { border-right: 0; }
+
+    .lang-toggle button.active {
+      background: rgba(83, 216, 251, 0.18);
+      color: var(--accent-2);
+    }
+
     .transcript-box {
       display: none;
       margin-top: 8px;
@@ -538,9 +578,16 @@
         <div class="brand-note">A focused workspace for multi-account booking, timezone inference, and quick checks that stays fast, clear, and easy to trust.</div>
       </div>
       <div class="brand-pills">
-        <div class="brand-pill">Voice fill</div>
         <div class="brand-pill">Auto timezone</div>
         <div class="brand-pill">Multi-account booking</div>
+        <div class="lang-toggle" title="Voice recognition language">
+          <button type="button" id="langEn" class="active">EN</button>
+          <button type="button" id="langEnIn">EN-IN</button>
+          <button type="button" id="langTe">TE</button>
+        </div>
+      </div>
+      <div id="httpsNotice" style="display:none; width:100%; margin-top:8px; padding:9px 12px; border-radius:10px; background:rgba(255,209,102,0.1); border:1px solid rgba(255,209,102,0.25); font-size:0.82rem; color:#ffd166;">
+        ⚠ You're on a local file — the browser will ask for mic permission every single time. Open via <strong><a href="https://satyamonisha2018-cloud.github.io/CinebuddyBookingPortal/" target="_blank" style="color:#ffd166;">GitHub Pages</a></strong> instead for persistent permission.
       </div>
     </header>
     <section class="layout">
@@ -715,6 +762,10 @@
       syncBtn: document.getElementById("syncBtn"),
       voiceCheckBtn: document.getElementById("voiceCheckBtn"),
       ledgerHeading: document.getElementById("ledgerHeading"),
+      httpsNotice: document.getElementById("httpsNotice"),
+      langEn: document.getElementById("langEn"),
+      langEnIn: document.getElementById("langEnIn"),
+      langTe: document.getElementById("langTe"),
       bookingTranscript: document.getElementById("bookingTranscript"),
       bookingTranscriptText: document.getElementById("bookingTranscriptText"),
       checkTranscript: document.getElementById("checkTranscript"),
@@ -722,6 +773,10 @@
     };
 
     const speechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    let activeRecognition = null;
+    let voiceLang = "en-US";
+
+    if (location.protocol === "file:") els.httpsNotice.style.display = "block";
 
     const state = loadState();
 
@@ -1255,16 +1310,15 @@
       return null;
     }
 
+    function toTitleCase(str) {
+      return str.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
     function extractSpokenFields(text) {
       const s = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
 
       const fields = {
-        date: null,
-        time: null,
-        theater: null,
-        state: null,
-        movie: null,
-        accounts: null,
+        date: null, time: null, theater: null, state: null, movie: null, accounts: null,
         target: /\b(check|availability|available|checker)\b/.test(s) ? "checker" : "booking",
       };
 
@@ -1272,33 +1326,66 @@
       fields.time = extractTimeFromSpeech(s);
       fields.state = extractStateFromSpeech(s);
 
-      // Theater — "Regal [words]" is the standard chain name pattern
-      const regalMatch = s.match(/\b(regal(?:\s+\w+){1,5})/i);
-      if (regalMatch) {
-        // Trim trailing stop-words that aren't part of the name
-        fields.theater = regalMatch[1].replace(/\s+(in|on|at|for|and|the|virginia|texas|california|florida|georgia|ohio|illinois|pennsylvania|maryland|michigan|indiana|tennessee|colorado|washington|arizona|minnesota|wisconsin|louisiana|oklahoma|nevada|utah|connecticut|delaware)\s*$/, "").trim();
-      } else {
-        const theaterKw = s.match(/\b(?:theater|theatre|cinema)\s+(.+?)(?=\s+(?:in|on|at\s+\d|for)\b|$)/i);
-        if (theaterKw) fields.theater = theaterKw[1].trim();
-      }
+      // Build a clean working string — strip time, date words, state tokens, filler words
+      let w = s;
+      w = w.replace(/\b\d{1,2}:\d{2}(?:\s*(?:am|pm|a\.m\.|p\.m\.))?\b/gi, " ");
+      w = w.replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, " ");
+      w = w.replace(/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b/gi, " ");
+      w = w.replace(/\b\d{1,2}(?:st|nd|rd|th)?\b/g, " ");
+      w = w.replace(/\b(?:today|tomorrow|date|check|availability|available|checker|booking)\b/gi, " ");
+      const stateRe = new RegExp("(?:^|\\s)(?:" + STATE_TOKENS.map(escapeRegExp).join("|") + ")(?:\\s|$)", "gi");
+      w = w.replace(stateRe, " ").replace(/\s+/g, " ").trim();
 
-      // Movie — ordered from most specific signal to least
-      const stopBoundary = "(?=\\s+(?:at\\s+regal|at\\s+theater|at\\s+theatre|in\\s+virginia|in\\s+texas|in\\s+california|in\\s+florida|in\\s+georgia|in\\s+ohio|in\\s+illinois|on\\s+june|on\\s+july|on\\s+august|on\\s+september|on\\s+october|on\\s+november|on\\s+december|on\\s+january|on\\s+february|on\\s+march|on\\s+april|on\\s+may|\\bat\\s+\\d|today|tomorrow)\\b|$)";
-      const moviePatterns = [
-        new RegExp(`\\b(?:movie|film|watching|watch|see|seeing)\\s+(?:is\\s+|called\\s+|named\\s+)?(.+?)${stopBoundary}`, "i"),
-        new RegExp(`\\b(?:booking?|book)\\s+(.+?)${stopBoundary}`, "i"),
-        new RegExp(`^(.+?)\\s+(?:at\\s+regal|at\\s+theater|at\\s+theatre)`, "i"),
-      ];
-      for (const pattern of moviePatterns) {
-        const m = s.match(pattern);
-        if (m && m[1] && m[1].trim().length > 1) {
-          fields.movie = m[1].trim();
-          break;
+      // Anchors: "showtime" separates theater (before) from movie (after)
+      //          "movie/film/called/named" marks the start of the movie name
+      const showtimeIdx = w.search(/\bshowtime\b/i);
+      const movieKwIdx  = w.search(/\b(?:movie|film|called|named)\b/i);
+
+      let theaterRaw = "";
+      let movieRaw   = "";
+
+      if (showtimeIdx !== -1 && movieKwIdx !== -1) {
+        if (showtimeIdx < movieKwIdx) {
+          // "theater showtime … movie name"
+          theaterRaw = w.slice(0, showtimeIdx);
+          movieRaw   = w.slice(movieKwIdx).replace(/\b(?:movie|film|called|named)\b/i, "");
+        } else {
+          // "movie name showtime theater"
+          movieRaw   = w.slice(movieKwIdx, showtimeIdx).replace(/\b(?:movie|film|called|named)\b/i, "");
+          theaterRaw = w.slice(showtimeIdx + "showtime".length);
+        }
+      } else if (showtimeIdx !== -1) {
+        theaterRaw = w.slice(0, showtimeIdx);
+        movieRaw   = w.slice(showtimeIdx + "showtime".length);
+      } else if (movieKwIdx !== -1) {
+        theaterRaw = w.slice(0, movieKwIdx);
+        movieRaw   = w.slice(movieKwIdx).replace(/\b(?:movie|film|called|named)\b/i, "");
+      } else {
+        // No anchors — try "Regal …" for theater; rest is movie
+        const regalIdx = w.search(/\bregal\b/i);
+        if (regalIdx !== -1) {
+          const rm = w.slice(regalIdx).match(/\bregal(?:\s+\w+){1,5}/i);
+          if (rm) { theaterRaw = rm[0]; movieRaw = w.replace(rm[0], ""); }
+        } else {
+          // Short utterance with no anchors → treat whole thing as movie
+          if (w.trim().split(/\s+/).length <= 5) movieRaw = w;
         }
       }
 
+      // --- Theater ---
+      const theaterClean = theaterRaw.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
+      if (theaterClean.length > 1) {
+        let theater = toTitleCase(theaterClean);
+        if (!/^regal\b/i.test(theater)) theater = "Regal " + theater;
+        fields.theater = theater;
+      }
+
+      // --- Movie ---
+      const movieClean = movieRaw.replace(/\b(?:at|in|the|to|from|a|an|showtime)\b/gi, "").replace(/\s+/g, " ").trim();
+      if (movieClean.length > 1) fields.movie = toTitleCase(movieClean);
+
       // Account matching
-      const spokenAccounts = ACCOUNTS.filter((account) => s.includes(normalizeText(account)));
+      const spokenAccounts = ACCOUNTS.filter(account => s.includes(normalizeText(account)));
       if (spokenAccounts.length) fields.accounts = spokenAccounts;
 
       return fields;
@@ -1320,29 +1407,37 @@
 
     function applyVoiceFields(fields) {
       if (fields.target === "checker") {
-        if (fields.date) els.checkDate.value = fields.date;
-        if (fields.time) els.checkTime.value = fields.time;
-        if (fields.theater) els.checkTheater.value = fields.theater;
-        if (fields.state) els.checkState.value = fields.state;
-        if (fields.movie) els.checkMovie.value = fields.movie;
-        if (fields.date) els.bookingDate.value = fields.date;
+        // Clear all checker fields first so no stale data remains
+        els.checkTheater.value = "";
+        els.checkMovie.value   = "";
+        els.checkState.value   = "";
+        if (fields.date)    { els.checkDate.value    = fields.date;    els.bookingDate.value = fields.date; }
+        if (fields.time)      els.checkTime.value    = fields.time;
+        if (fields.theater)   els.checkTheater.value = fields.theater;
+        if (fields.state)     els.checkState.value   = fields.state;
+        if (fields.movie)     els.checkMovie.value   = fields.movie;
       } else {
-        if (fields.date) els.bookingDate.value = fields.date;
-        if (fields.time) els.bookingTime.value = fields.time;
-        if (fields.theater) els.bookingTheater.value = fields.theater;
-        if (fields.state) els.bookingState.value = fields.state;
-        if (fields.movie) els.bookingMovie.value = fields.movie;
-        if (fields.date) els.checkDate.value = fields.date;
+        // Clear all booking fields first
+        els.bookingTheater.value = "";
+        els.bookingMovie.value   = "";
+        els.bookingState.value   = "";
+        if (fields.date)    { els.bookingDate.value    = fields.date;    els.checkDate.value = fields.date; }
+        if (fields.time)      els.bookingTime.value    = fields.time;
+        if (fields.theater)   els.bookingTheater.value = fields.theater;
+        if (fields.state)     els.bookingState.value   = fields.state;
+        if (fields.movie)     els.bookingMovie.value   = fields.movie;
+        if (fields.accounts && fields.accounts.length) applySelectedAccounts(fields.accounts);
       }
-
-      if (fields.target !== "checker" && fields.accounts && fields.accounts.length) {
-        applySelectedAccounts(fields.accounts);
-      }
-
       refreshZoneHints();
     }
 
     function startVoiceFill(target) {
+      // Toggle: clicking while listening stops it
+      if (activeRecognition) {
+        activeRecognition.stop();
+        return;
+      }
+
       if (!speechRecognitionClass) {
         alert("Voice recognition is not supported in this browser. Please use Chrome or Edge.");
         return;
@@ -1352,10 +1447,13 @@
       const transcriptBox = target === "booking" ? els.bookingTranscript : els.checkTranscript;
       const transcriptText = target === "booking" ? els.bookingTranscriptText : els.checkTranscriptText;
       const originalText = btn.textContent;
+      let finalTranscript = "";
+      let silenceTimer = null;
 
       function resetBtn() {
         btn.textContent = originalText;
-        btn.disabled = false;
+        btn.classList.remove("listening");
+        activeRecognition = null;
       }
 
       function showTranscript(text) {
@@ -1364,49 +1462,65 @@
       }
 
       const recognition = new speechRecognitionClass();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
+      recognition.lang = voiceLang;
+      recognition.interimResults = true;
       recognition.maxAlternatives = 3;
-      recognition.continuous = false;
+      recognition.continuous = true;
 
       recognition.onstart = () => {
-        btn.textContent = "Listening…";
-        btn.disabled = true;
+        btn.textContent = "■ Stop";
+        btn.classList.add("listening");
+        showTranscript("Listening…");
       };
 
-      recognition.onend = resetBtn;
-
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        showTranscript(transcript);
-        const fields = extractSpokenFields(transcript);
-        fields.target = target;
-        applyVoiceFields(fields);
+        clearTimeout(silenceTimer);
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
+          else interim += event.results[i][0].transcript;
+        }
+        showTranscript((finalTranscript + interim).trim() || "Listening…");
+        // Auto-stop 2.5 s after last speech segment
+        silenceTimer = setTimeout(() => { if (activeRecognition) activeRecognition.stop(); }, 2500);
+      };
+
+      recognition.onend = () => {
+        clearTimeout(silenceTimer);
+        resetBtn();
+        const transcript = finalTranscript.trim();
+        if (transcript) {
+          showTranscript(transcript);
+          const fields = extractSpokenFields(transcript);
+          fields.target = target;
+          applyVoiceFields(fields);
+        }
       };
 
       recognition.onerror = (event) => {
+        clearTimeout(silenceTimer);
         resetBtn();
         switch (event.error) {
           case "not-allowed":
           case "permission-denied":
-            alert("Microphone access was blocked.\n\nClick the lock/mic icon in your browser's address bar and allow microphone access, then try again.");
+            alert("Microphone access was blocked.\n\nFor permanent permission without popups, open via:\nhttps://satyamonisha2018-cloud.github.io/CinebuddyBookingPortal/");
             break;
-          case "no-speech":
-            break;
+          case "no-speech": break;
           case "audio-capture":
             alert("No microphone detected. Please connect a microphone and try again.");
             break;
           case "network":
-            alert("Network error. Chrome's voice recognition requires an internet connection. Please check your connection and try again.");
+            alert("Network error — Chrome's voice recognition needs an internet connection.");
             break;
           case "service-not-allowed":
-            alert("Voice recognition is blocked on local files in some browsers.\n\nTry opening the file in Edge, or serve it from a local server (e.g. VS Code Live Server).");
+            alert("Mic blocked on local files.\n\nOpen via GitHub Pages for permanent permission:\nhttps://satyamonisha2018-cloud.github.io/CinebuddyBookingPortal/");
             break;
           default:
-            alert(`Voice recognition error: ${event.error}. Please try again.`);
+            alert(`Voice error: ${event.error}. Please try again.`);
         }
       };
 
+      activeRecognition = recognition;
       try {
         recognition.start();
       } catch (err) {
@@ -1479,6 +1593,18 @@
 
     els.voiceFillBtn.addEventListener("click", () => startVoiceFill("booking"));
     els.voiceCheckBtn.addEventListener("click", () => startVoiceFill("checker"));
+
+    [
+      { btn: els.langEn,   lang: "en-US" },
+      { btn: els.langEnIn, lang: "en-IN" },
+      { btn: els.langTe,   lang: "te-IN" },
+    ].forEach(({ btn, lang }) => {
+      btn.addEventListener("click", () => {
+        voiceLang = lang;
+        [els.langEn, els.langEnIn, els.langTe].forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
 
     els.selectAllAccountsBtn.addEventListener("click", () => {
       setAllBookingAccounts(true);
