@@ -1758,6 +1758,28 @@
         .replace(/\bstet\b/gi, 'state');
     }
 
+    const ACCOUNT_ALIASES = {
+      "Strangerthng": ["stranger things", "stranger thing", "strangerthings", "stranger thng"],
+    };
+
+    function speechContainsAccount(speech, account) {
+      const normAcc = normalizeText(account);
+      if (speech.includes(normAcc)) return true;
+      const aliases = ACCOUNT_ALIASES[account] || [];
+      if (aliases.some(a => speech.includes(a))) return true;
+      // Sliding window: concatenate adjacent words to handle camelCase
+      // e.g. "death note" → "deathnote" matches "DeathNote"
+      const words = speech.split(" ");
+      for (let i = 0; i < words.length; i++) {
+        let concat = words[i];
+        for (let j = i + 1; j < Math.min(i + 4, words.length); j++) {
+          concat += words[j];
+          if (concat === normAcc) return true;
+        }
+      }
+      return false;
+    }
+
     function extractSpokenFields(text) {
       const s = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
 
@@ -1834,7 +1856,7 @@
       if (!fields.time)  fields.time  = extractTimeFromSpeech(s);
       if (!fields.state) fields.state = extractStateFromSpeech(s);
 
-      const spokenAccounts = ACCOUNTS.filter(account => s.includes(normalizeText(account)));
+      const spokenAccounts = ACCOUNTS.filter(account => speechContainsAccount(s, account));
       if (spokenAccounts.length) fields.accounts = spokenAccounts;
 
       return fields;
