@@ -902,16 +902,341 @@
       },
     ];
 
+    // City → IANA timezone. Used as fallback when no state token matches.
+    // Keys are already normalizeText()-safe (lowercase, no punctuation).
+    const CITY_ZONE_MAP = (function() {
+      const E = "America/New_York", C = "America/Chicago",
+            M = "America/Denver",  P = "America/Los_Angeles",
+            A = "America/Anchorage", H = "Pacific/Honolulu";
+      return {
+        // Connecticut
+        "bridgeport":E,"new haven":E,"hartford":E,"stamford":E,"waterbury":E,
+        "norwalk":E,"danbury":E,"new britain":E,"west hartford":E,"greenwich":E,
+        "fairfield":E,"milford":E,"meriden":E,"new london":E,
+        // Delaware
+        "wilmington":E,"dover":E,"newark":E,
+        // Florida
+        "jacksonville":E,"miami":E,"tampa":E,"orlando":E,"st petersburg":E,
+        "hialeah":E,"fort lauderdale":E,"tallahassee":E,"hollywood":E,
+        "pembroke pines":E,"gainesville":E,"coral springs":E,"cape coral":E,
+        "miami beach":E,"clearwater":E,"port st lucie":E,"lakeland":E,
+        "palm bay":E,"pompano beach":E,"west palm beach":E,"boca raton":E,
+        "deltona":E,"plantation":E,"fort myers":E,"miramar":E,"sunrise":E,
+        "deerfield beach":E,"melbourne":E,"brandon":E,"davie":E,"palm coast":E,
+        "boynton beach":E,"daytona beach":E,"kissimmee":E,"sanford":E,
+        "homestead":E,"north miami":E,"margate":E,"ocala":E,"sarasota":E,
+        "pensacola":E,"fort pierce":E,"north port":E,"venice":E,"lakeland":E,
+        // Georgia
+        "atlanta":E,"columbus":E,"augusta":E,"macon":E,"savannah":E,
+        "athens":E,"sandy springs":E,"roswell":E,"johns creek":E,
+        "warner robins":E,"alpharetta":E,"marietta":E,"smyrna":E,
+        "valdosta":E,"brookhaven":E,"dunwoody":E,"kennesaw":E,
+        "peachtree city":E,"stonecrest":E,"rome":E,"dalton":E,"gainesville":E,
+        // Indiana (all Eastern since 2006)
+        "indianapolis":E,"fort wayne":E,"evansville":E,"south bend":E,
+        "carmel":E,"fishers":E,"hammond":E,"muncie":E,"lafayette":E,
+        "noblesville":E,"terre haute":E,"greenwood":E,"kokomo":E,
+        "anderson":E,"bloomington":E,"gary":E,"michigan city":E,
+        "west lafayette":E,"new albany":E,"richmond":E,"elkhart":E,
+        "mishawaka":E,"lawrence":E,"jeffersonville":E,"columbus":E,
+        // Kentucky (mostly Eastern)
+        "louisville":E,"lexington":E,"bowling green":E,"owensboro":E,
+        "covington":E,"florence":E,"elizabethtown":E,"henderson":E,
+        "georgetown":E,"frankfort":E,"hopkinsville":E,"richmond":E,
+        // Maine
+        "portland":E,"lewiston":E,"bangor":E,"south portland":E,"auburn":E,
+        "biddeford":E,"augusta":E,
+        // Maryland
+        "baltimore":E,"columbia":E,"germantown":E,"silver spring":E,
+        "waldorf":E,"glen burnie":E,"ellicott city":E,"frederick":E,
+        "rockville":E,"gaithersburg":E,"bowie":E,"hagerstown":E,
+        "annapolis":E,"college park":E,"laurel":E,"bethesda":E,
+        "dundalk":E,"towson":E,"clinton":E,"aspen hill":E,
+        // Massachusetts
+        "boston":E,"worcester":E,"springfield":E,"lowell":E,"cambridge":E,
+        "new bedford":E,"brockton":E,"lynn":E,"fall river":E,"quincy":E,
+        "newton":E,"lawrence":E,"somerville":E,"framingham":E,"haverhill":E,
+        "waltham":E,"malden":E,"brookline":E,"plymouth":E,"medford":E,
+        "taunton":E,"weymouth":E,"revere":E,"peabody":E,"chicopee":E,
+        "holyoke":E,"attleboro":E,"fitchburg":E,"salem":E,"methuen":E,
+        "leominster":E,"barnstable":E,"pittsfield":E,"gloucester":E,
+        "beverly":E,"north attleborough":E,"marlborough":E,
+        // Michigan
+        "detroit":E,"grand rapids":E,"warren":E,"sterling heights":E,
+        "lansing":E,"ann arbor":E,"flint":E,"dearborn":E,"livonia":E,
+        "clinton township":E,"westland":E,"troy":E,"farmington hills":E,
+        "kalamazoo":E,"wyoming":E,"rochester hills":E,"taylor":E,
+        "pontiac":E,"muskegon":E,"holland":E,"southfield":E,"saginaw":E,
+        "east lansing":E,"midland":E,"port huron":E,"bay city":E,
+        "waterford":E,"auburn hills":E,"shelby township":E,"novi":E,
+        "canton":E,"dearborn heights":E,"westland":E,
+        // New Hampshire
+        "manchester":E,"nashua":E,"concord":E,"derry":E,"dover":E,
+        "rochester":E,"merrimack":E,"londonderry":E,"hudson":E,"keene":E,
+        "portsmouth":E,
+        // New Jersey
+        "newark":E,"jersey city":E,"paterson":E,"elizabeth":E,"edison":E,
+        "woodbridge":E,"lakewood":E,"toms river":E,"hamilton":E,"trenton":E,
+        "clifton":E,"camden":E,"brick":E,"cherry hill":E,"passaic":E,
+        "middletown":E,"union city":E,"bayonne":E,"north bergen":E,
+        "vineland":E,"parsippany":E,"new brunswick":E,"hoboken":E,
+        "east orange":E,"hackensack":E,"piscataway":E,"union":E,
+        "atlantic city":E,"garfield":E,"irvington":E,"perth amboy":E,
+        "linden":E,"long branch":E,"freehold":E,"old bridge":E,
+        // New York
+        "new york":E,"new york city":E,"nyc":E,"manhattan":E,"brooklyn":E,
+        "queens":E,"bronx":E,"staten island":E,"buffalo":E,"yonkers":E,
+        "syracuse":E,"albany":E,"new rochelle":E,"mount vernon":E,
+        "schenectady":E,"utica":E,"white plains":E,"hempstead":E,
+        "levittown":E,"niagara falls":E,"binghamton":E,"freeport":E,
+        "valley stream":E,"long island":E,"babylon":E,"islip":E,
+        "poughkeepsie":E,"spring valley":E,"rome":E,"jamestown":E,
+        "ithaca":E,"elmira":E,"newburgh":E,"troy":E,"saratoga springs":E,
+        // North Carolina
+        "charlotte":E,"raleigh":E,"greensboro":E,"durham":E,
+        "winston salem":E,"fayetteville":E,"cary":E,"wilmington":E,
+        "high point":E,"concord":E,"asheville":E,"gastonia":E,
+        "chapel hill":E,"rocky mount":E,"greenville":E,"burlington":E,
+        "huntersville":E,"kannapolis":E,"apex":E,"mooresville":E,
+        "wake forest":E,"durham":E,"jacksonville":E,"sanford":E,
+        // Ohio
+        "columbus":E,"cleveland":E,"cincinnati":E,"toledo":E,"akron":E,
+        "dayton":E,"parma":E,"canton":E,"youngstown":E,"lorain":E,
+        "kettering":E,"elyria":E,"lakewood":E,"cuyahoga falls":E,
+        "euclid":E,"middletown":E,"newark":E,"mansfield":E,"mentor":E,
+        "beavercreek":E,"fairfield":E,"dublin":E,"huber heights":E,
+        "springfield":E,"xenia":E,"zanesville":E,"lima":E,"hamilton":E,
+        "strongsville":E,"riverside":E,"westerville":E,
+        // Pennsylvania
+        "philadelphia":E,"pittsburgh":E,"allentown":E,"erie":E,
+        "reading":E,"scranton":E,"bethlehem":E,"lancaster":E,
+        "harrisburg":E,"altoona":E,"york":E,"wilkes barre":E,
+        "chester":E,"norristown":E,"state college":E,"easton":E,
+        "mckeesport":E,"williamsport":E,
+        // Rhode Island
+        "providence":E,"warwick":E,"cranston":E,"pawtucket":E,
+        "east providence":E,"woonsocket":E,
+        // South Carolina
+        "columbia":E,"charleston":E,"north charleston":E,"mount pleasant":E,
+        "rock hill":E,"greenville":E,"summerville":E,"goose creek":E,
+        "spartanburg":E,"florence":E,"sumter":E,"myrtle beach":E,
+        "hilton head":E,"hilton head island":E,"anderson":E,"greer":E,
+        // Tennessee — eastern (ET)
+        "knoxville":E,"chattanooga":E,"johnson city":E,"kingsport":E,
+        "bristol":E,"maryville":E,"oak ridge":E,
+        // Vermont
+        "burlington":E,"south burlington":E,"colchester":E,"rutland":E,
+        // Virginia
+        "virginia beach":E,"norfolk":E,"chesapeake":E,"arlington":E,
+        "richmond":E,"newport news":E,"alexandria":E,"hampton":E,
+        "roanoke":E,"portsmouth":E,"suffolk":E,"lynchburg":E,
+        "harrisonburg":E,"leesburg":E,"charlottesville":E,"blacksburg":E,
+        "manassas":E,"danville":E,"mclean":E,"herndon":E,"reston":E,
+        "ashburn":E,"fredericksburg":E,"falls church":E,"winchester":E,
+        "woodbridge":E,
+        // Washington DC
+        "washington":E,"washington dc":E,
+        // West Virginia
+        "charleston":E,"huntington":E,"morgantown":E,"parkersburg":E,
+        "wheeling":E,"weirton":E,
+
+        // === CENTRAL ===
+        // Alabama
+        "birmingham":C,"montgomery":C,"huntsville":C,"mobile":C,
+        "tuscaloosa":C,"hoover":C,"dothan":C,"auburn":C,"decatur":C,
+        "madison":C,"florence":C,"gadsden":C,"phenix city":C,"prattville":C,
+        // Arkansas
+        "little rock":C,"fort smith":C,"fayetteville":C,"springdale":C,
+        "jonesboro":C,"conway":C,"rogers":C,"north little rock":C,
+        "bentonville":C,"pine bluff":C,
+        // Illinois
+        "chicago":C,"aurora":C,"joliet":C,"naperville":C,"rockford":C,
+        "springfield":C,"elgin":C,"peoria":C,"champaign":C,"waukegan":C,
+        "cicero":C,"bloomington":C,"evanston":C,"decatur":C,"berwyn":C,
+        "orland park":C,"arlington heights":C,"schaumburg":C,
+        "tinley park":C,"bolingbrook":C,"palatine":C,"skokie":C,
+        "des plaines":C,"oak park":C,"downers grove":C,"galesburg":C,
+        "east st louis":C,"normal":C,"oak lawn":C,"elgin":C,"waukegan":C,
+        // Iowa
+        "des moines":C,"cedar rapids":C,"davenport":C,"sioux city":C,
+        "iowa city":C,"waterloo":C,"council bluffs":C,"dubuque":C,
+        "ames":C,"west des moines":C,"ankeny":C,"urbandale":C,
+        // Kansas
+        "wichita":C,"overland park":C,"olathe":C,"topeka":C,
+        "lawrence":C,"shawnee":C,"lenexa":C,"salina":C,"manhattan":C,
+        // Louisiana
+        "new orleans":C,"baton rouge":C,"shreveport":C,"metairie":C,
+        "kenner":C,"bossier city":C,"lafayette":C,"lake charles":C,
+        "monroe":C,"marrero":C,"houma":C,"slidell":C,
+        // Minnesota
+        "minneapolis":C,"st paul":C,"duluth":C,"bloomington":C,
+        "brooklyn park":C,"plymouth":C,"maple grove":C,"woodbury":C,
+        "st cloud":C,"eagan":C,"coon rapids":C,"eden prairie":C,
+        "burnsville":C,"minnetonka":C,"blaine":C,"maplewood":C,
+        "lakeville":C,"rochester":C,"brooklyn center":C,
+        // Mississippi
+        "jackson":C,"gulfport":C,"southaven":C,"hattiesburg":C,
+        "biloxi":C,"meridian":C,"tupelo":C,"greenville":C,
+        "olive branch":C,"horn lake":C,"pearl":C,"madison":C,
+        // Missouri
+        "st louis":C,"springfield":C,"columbia":C,"independence":C,
+        "lees summit":C,"ofallon":C,"st joseph":C,"st charles":C,
+        "blue springs":C,"joplin":C,"florissant":C,"chesterfield":C,
+        "jefferson city":C,"cape girardeau":C,"liberty":C,
+        // Nebraska
+        "omaha":C,"lincoln":C,"bellevue":C,"grand island":C,
+        "kearney":C,"fremont":C,"hastings":C,"norfolk":C,
+        // North Dakota
+        "fargo":C,"bismarck":C,"grand forks":C,"minot":C,"west fargo":C,
+        "mandan":C,
+        // Oklahoma
+        "oklahoma city":C,"tulsa":C,"norman":C,"broken arrow":C,
+        "lawton":C,"edmond":C,"moore":C,"midwest city":C,
+        "stillwater":C,"enid":C,"owasso":C,"muskogee":C,
+        // South Dakota
+        "sioux falls":C,"aberdeen":C,"brookings":C,"watertown":C,
+        "mitchell":C,
+        // Tennessee — western/central (CT)
+        "nashville":C,"memphis":C,"clarksville":C,"murfreesboro":C,
+        "franklin":C,"hendersonville":C,"smyrna":C,"brentwood":C,
+        "jackson":C,"cookeville":C,"columbia":C,"spring hill":C,
+        // Texas (most is Central)
+        "houston":C,"san antonio":C,"dallas":C,"austin":C,
+        "fort worth":C,"arlington":C,"corpus christi":C,"plano":C,
+        "laredo":C,"lubbock":C,"garland":C,"irving":C,"amarillo":C,
+        "grand prairie":C,"mckinney":C,"frisco":C,"mesquite":C,
+        "killeen":C,"mcallen":C,"pasadena":C,"beaumont":C,
+        "midland":C,"waco":C,"odessa":C,"abilene":C,"carrollton":C,
+        "round rock":C,"denton":C,"richardson":C,"pearland":C,
+        "tyler":C,"college station":C,"league city":C,"wichita falls":C,
+        "allen":C,"sugar land":C,"edinburg":C,"lewisville":C,
+        "cedar park":C,"san angelo":C,"temple":C,"atascocita":C,
+        "the woodlands":C,"flower mound":C,"new braunfels":C,
+        "brownsville":C,"harlingen":C,"pharr":C,"mission":C,
+        "longview":C,"conroe":C,"rowlett":C,"cedar hill":C,
+        "north richland hills":C,"wylie":C,"waxahachie":C,
+        // Wisconsin
+        "milwaukee":C,"madison":C,"green bay":C,"kenosha":C,
+        "racine":C,"appleton":C,"waukesha":C,"oshkosh":C,
+        "eau claire":C,"janesville":C,"west allis":C,"beloit":C,
+        "superior":C,"fond du lac":C,"brookfield":C,"new berlin":C,
+
+        // === MOUNTAIN ===
+        // Arizona
+        "phoenix":M,"tucson":M,"mesa":M,"chandler":M,"scottsdale":M,
+        "gilbert":M,"tempe":M,"peoria":M,"surprise":M,"yuma":M,
+        "avondale":M,"glendale":M,"goodyear":M,"flagstaff":M,
+        "buckeye":M,"lake havasu city":M,"sierra vista":M,"prescott":M,
+        "apache junction":M,"queen creek":M,"maricopa":M,
+        // Colorado
+        "denver":M,"colorado springs":M,"aurora":M,"fort collins":M,
+        "lakewood":M,"thornton":M,"arvada":M,"westminster":M,
+        "pueblo":M,"centennial":M,"boulder":M,"highlands ranch":M,
+        "greeley":M,"longmont":M,"loveland":M,"broomfield":M,
+        "castle rock":M,"commerce city":M,"parker":M,"brighton":M,
+        // Idaho
+        "boise":M,"nampa":M,"meridian":M,"idaho falls":M,
+        "pocatello":M,"caldwell":M,"twin falls":M,"coeur dalene":M,
+        "lewiston":M,
+        // Montana
+        "billings":M,"missoula":M,"great falls":M,"bozeman":M,
+        "butte":M,"helena":M,"kalispell":M,
+        // New Mexico
+        "albuquerque":M,"las cruces":M,"rio rancho":M,"santa fe":M,
+        "roswell":M,"farmington":M,"clovis":M,"hobbs":M,
+        // Utah
+        "salt lake city":M,"west valley city":M,"west jordan":M,
+        "provo":M,"st george":M,"orem":M,"sandy":M,"ogden":M,
+        "layton":M,"south jordan":M,"millcreek":M,"taylorsville":M,
+        "logan":M,"murray":M,"lehi":M,"herriman":M,"eagle mountain":M,
+        // Wyoming
+        "cheyenne":M,"casper":M,"laramie":M,"gillette":M,"rock springs":M,
+        // Texas — El Paso is Mountain
+        "el paso":M,
+        // South Dakota — Rapid City is Mountain
+        "rapid city":M,
+
+        // === PACIFIC ===
+        // California
+        "los angeles":P,"san diego":P,"san jose":P,"san francisco":P,
+        "fresno":P,"sacramento":P,"long beach":P,"oakland":P,
+        "bakersfield":P,"anaheim":P,"santa ana":P,"riverside":P,
+        "stockton":P,"chula vista":P,"irvine":P,"fremont":P,
+        "san bernardino":P,"modesto":P,"fontana":P,"moreno valley":P,
+        "glendale":P,"huntington beach":P,"santa clarita":P,
+        "garden grove":P,"oceanside":P,"rancho cucamonga":P,
+        "santa rosa":P,"ontario":P,"elk grove":P,"lancaster":P,
+        "palmdale":P,"salinas":P,"pomona":P,"escondido":P,
+        "torrance":P,"pasadena":P,"fullerton":P,"orange":P,
+        "roseville":P,"visalia":P,"hayward":P,"sunnyvale":P,
+        "corona":P,"concord":P,"thousand oaks":P,"victorville":P,
+        "simi valley":P,"santa clara":P,"costa mesa":P,"vallejo":P,
+        "el monte":P,"murrieta":P,"downey":P,"inglewood":P,
+        "west covina":P,"burbank":P,"compton":P,"daly city":P,
+        "berkeley":P,"el cajon":P,"mission viejo":P,"rialto":P,
+        "antioch":P,"temecula":P,"santa barbara":P,"oxnard":P,
+        "ventura":P,"san mateo":P,"redding":P,"chico":P,"vista":P,
+        "san marcos":P,"carlsbad":P,"lake forest":P,"jurupa valley":P,
+        "san leandro":P,"vacaville":P,"hesperia":P,"hawthorne":P,
+        "citrus heights":P,"alhambra":P,"tracy":P,"santa monica":P,
+        "whittier":P,"livermore":P,"newport beach":P,"santa cruz":P,
+        "fairfield":P,"richmond":P,"clovis":P,"norwalk":P,
+        "westminster":P,"lakewood":P,"el cajon":P,"indio":P,
+        "menifee":P,"napa":P,"richmond":P,"watsonville":P,
+        "san buenaventura":P,"west sacramento":P,"folsom":P,
+        "El Cajon":P,"compton":P,"perris":P,"hemet":P,
+        // Nevada
+        "las vegas":P,"henderson":P,"reno":P,"north las vegas":P,
+        "sparks":P,"paradise":P,"spring valley":P,"enterprise":P,
+        "sunrise manor":P,"summerlin":P,"sunrise":P,
+        // Oregon
+        "portland":P,"eugene":P,"salem":P,"gresham":P,
+        "hillsboro":P,"beaverton":P,"bend":P,"medford":P,
+        "springfield":P,"corvallis":P,"albany":P,"tigard":P,
+        // Washington State
+        "seattle":P,"spokane":P,"tacoma":P,"vancouver":P,
+        "bellevue":P,"kent":P,"everett":P,"renton":P,
+        "kirkland":P,"bellingham":P,"yakima":P,"redmond":P,
+        "marysville":P,"shoreline":P,"richland":P,"kennewick":P,
+        "federal way":P,"sammamish":P,"pasco":P,"olympia":P,
+        "lakewood":P,"auburn":P,"spokane valley":P,
+
+        // === ALASKA ===
+        "anchorage":A,"fairbanks":A,"juneau":A,"sitka":A,
+        "ketchikan":A,"wasilla":A,"kenai":A,
+
+        // === HAWAII ===
+        "honolulu":H,"pearl city":H,"hilo":H,"kailua":H,
+        "kaneohe":H,"kahului":H,"mililani":H,"ewa beach":H,"kihei":H,
+      };
+    })();
+
     function detectTimeZone(theater, state) {
       const combined = `${normalizeText(theater)} ${normalizeText(state)}`.trim();
       if (!combined) return null;
 
+      // 1. Try state/abbreviation tokens first (faster, unambiguous)
       for (const rule of TIMEZONE_PATTERNS) {
         const matched = rule.tokens.some((token) => {
           const esc = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           return new RegExp(`(?:^|\\s)${esc}(?:\\s|$)`).test(combined);
         });
         if (matched) return { zone: rule.zone, label: rule.label, source: state ? "state" : "theater" };
+      }
+
+      // 2. Fall back to city lookup — match longest city name first to avoid
+      //    short names like "rome" matching inside "jerome"
+      const citiesByLen = Object.keys(CITY_ZONE_MAP).sort((a, b) => b.length - a.length);
+      for (const city of citiesByLen) {
+        const esc = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const re = city.includes(" ")
+          ? new RegExp(`(?:^|\\s)${esc}(?:\\s|$)`)
+          : new RegExp(`\\b${esc}\\b`);
+        if (re.test(combined)) {
+          const zone = CITY_ZONE_MAP[city];
+          const rule = TIMEZONE_PATTERNS.find(r => r.zone === zone);
+          return { zone, label: rule ? rule.label : zone, source: "city" };
+        }
       }
 
       return null;
