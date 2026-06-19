@@ -1804,6 +1804,7 @@
         { pattern: /\bstate\b/,              field: "state"       },
         { pattern: /\bregion\b/,             field: "state"       },
         { pattern: /\bdate\b/,              field: "date"        },
+        { pattern: /\baccounts?\b/,          field: "accounts"    },
       ];
 
       // Find the first occurrence of each keyword pattern in the transcript.
@@ -1848,6 +1849,9 @@
           const seg = segment.replace(/^(?:is|iz|called?|named?)\s+/i, '');
           const clean = seg.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
           if (clean.length > 1) fields.movie = toTitleCase(clean);
+        } else if (cur.field === "accounts") {
+          const accs = ACCOUNTS.filter(account => speechContainsAccount(segment, account));
+          if (accs.length) fields.accounts = accs;
         }
       }
 
@@ -1856,8 +1860,10 @@
       if (!fields.time)  fields.time  = extractTimeFromSpeech(s);
       if (!fields.state) fields.state = extractStateFromSpeech(s);
 
-      const spokenAccounts = ACCOUNTS.filter(account => speechContainsAccount(s, account));
-      if (spokenAccounts.length) fields.accounts = spokenAccounts;
+      if (!fields.accounts) {
+        const spokenAccounts = ACCOUNTS.filter(account => speechContainsAccount(s, account));
+        if (spokenAccounts.length) fields.accounts = spokenAccounts;
+      }
 
       return fields;
     }
