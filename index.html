@@ -1596,11 +1596,13 @@
     function extractTimeFromSpeech(text) {
       const lower = text.toLowerCase();
 
-      const ampmMatch = lower.match(/\b(\d{1,2})(?:[:\s](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/);
+      // a/p and m may be separated by spaces or dots once punctuation has been
+      // normalized to spaces upstream (e.g. "p.m." becomes "p m").
+      const ampmMatch = lower.match(/\b(\d{1,2})(?:[:.\s](\d{2}))?\s*([ap])\.?\s*m\.?\b/);
       if (ampmMatch) {
         let hour = Number(ampmMatch[1]);
         const minute = Number(ampmMatch[2] || 0);
-        const isPM = ampmMatch[3].startsWith("p");
+        const isPM = ampmMatch[3] === "p";
         if (isPM && hour < 12) hour += 12;
         if (!isPM && hour === 12) hour = 0;
         return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -1612,10 +1614,10 @@
       }
 
       const looseMatch = lower.match(/\b(\d{1,2})\s+(\d{2})\b/);
-      if (looseMatch && /\b(am|pm|a\.m\.|p\.m\.)\b/.test(lower)) {
+      if (looseMatch && /\b([ap])\.?\s*m\.?\b/.test(lower)) {
         let hour = Number(looseMatch[1]);
         const minute = Number(looseMatch[2]);
-        const isPM = /\b(pm|p\.m\.)\b/.test(lower);
+        const isPM = /\bp\.?\s*m\.?\b/.test(lower);
         if (isPM && hour < 12) hour += 12;
         if (!isPM && hour === 12) hour = 0;
         return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
