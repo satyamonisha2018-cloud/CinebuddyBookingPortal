@@ -1759,17 +1759,43 @@
     }
 
     const ACCOUNT_ALIASES = {
-      "Strangerthng": ["stranger things", "stranger thing", "strangerthings", "stranger thng"],
+      "Satyaam":      ["satyam", "sathyam", "satya am", "sathya am", "sathyaam"],
+      "Satyaap":      ["satyap", "sathyap", "satya ap", "sathya ap", "sathyaap", "satya p", "satyaab", "sathyaab"],
+      "Satyamonisha 2018": ["satya monisha 2018", "sathya monisha 2018", "satyamonisha 2018", "satya monisha", "sathyamonisha"],
+      "Vamsy.24":     ["vamsy 24", "vamsi 24", "1024", "vamsy twenty four", "vamsi twenty four", "vamsy two four"],
+      "DeathNote":    ["death note", "deathnote", "debt note"],
+      "Vamsi.fall":   ["vamsi fall", "vamsy fall", "vamsi all", "wamsi fall"],
+      "Strangerthng": ["stranger things", "stranger thing", "strangerthings", "stranger thng", "strange thing"],
+      "mcvamsi":      ["mc vamsi", "mc vamsy", "mcvamsy", "m c vamsi", "mac vamsi"],
+      "Vamsi Krishna Reddy Lekala": ["vamsi krishna reddy lekala", "vamsy krishna reddy lekala", "vamsi krishna reddy", "krishna reddy lekala"],
     };
+
+    // True if `phrase` (1+ space-separated words) appears as a contiguous run
+    // of whole words inside `words`. Whole-word matching avoids false hits like
+    // "satyam" matching inside "satyamonisha".
+    function wordsContainPhrase(words, phrase) {
+      const target = phrase.split(" ").filter(Boolean);
+      if (!target.length) return false;
+      for (let i = 0; i + target.length <= words.length; i++) {
+        let ok = true;
+        for (let k = 0; k < target.length; k++) {
+          if (words[i + k] !== target[k]) { ok = false; break; }
+        }
+        if (ok) return true;
+      }
+      return false;
+    }
 
     function speechContainsAccount(speech, account) {
       const normAcc = normalizeText(account);
-      if (speech.includes(normAcc)) return true;
+      const words = speech.split(" ").filter(Boolean);
+      // 1. Exact whole-word(s) match of the normalized account name
+      if (wordsContainPhrase(words, normAcc)) return true;
+      // 2. Any configured alias (whole-word sequence)
       const aliases = ACCOUNT_ALIASES[account] || [];
-      if (aliases.some(a => speech.includes(a))) return true;
-      // Sliding window: concatenate adjacent words to handle camelCase
-      // e.g. "death note" → "deathnote" matches "DeathNote"
-      const words = speech.split(" ");
+      if (aliases.some(a => wordsContainPhrase(words, normalizeText(a)))) return true;
+      // 3. Sliding window: concatenate adjacent words to handle camelCase
+      //    e.g. "death note" → "deathnote" matches "DeathNote"; "mc vamsi" → "mcvamsi"
       for (let i = 0; i < words.length; i++) {
         let concat = words[i];
         for (let j = i + 1; j < Math.min(i + 4, words.length); j++) {
