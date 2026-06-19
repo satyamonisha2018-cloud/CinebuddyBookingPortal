@@ -216,6 +216,12 @@
       accent-color: var(--accent);
     }
 
+    .acct-num {
+      color: var(--accent);
+      font-weight: 700;
+      margin-right: 2px;
+    }
+
     label {
       display: grid;
       gap: 8px;
@@ -1345,7 +1351,7 @@
       els.bookingAccountOptions.innerHTML = ACCOUNTS.map((account, index) => `
         <label class="account-option">
           <input type="checkbox" name="bookingAccounts" value="${escapeHtml(account)}" ${index === 0 ? "checked" : ""} />
-          <span>${escapeHtml(account)}</span>
+          <span><strong class="acct-num">${index + 1}.</strong> ${escapeHtml(account)}</span>
         </label>
       `).join("");
       if (els.accountCount) els.accountCount.textContent = String(ACCOUNTS.length);
@@ -1808,6 +1814,36 @@
       return false;
     }
 
+    const NUMBER_WORDS = {
+      one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
+      first:1, second:2, third:3, fourth:4, fifth:5, sixth:6, seventh:7, eighth:8, ninth:9, tenth:10,
+    };
+
+    // Parse the segment spoken after the word "accounts". Supports:
+    //   - position numbers: "1 2 4 6" or "one two four six" → 1-based index into ACCOUNTS
+    //   - "all" / "everyone" → every account
+    //   - account names / aliases (whole-word + camelCase + fuzzy fallback)
+    // Numbers are only interpreted as indices here (after "accounts"), never on the
+    // full transcript, so dates/times can't be misread as account positions.
+    function extractAccountsFromSpeech(segment) {
+      const seg = segment.toLowerCase();
+      if (/\b(all|everyone|every\s*one|everybody|each)\b/.test(seg)) return ACCOUNTS.slice();
+
+      const selected = new Set();
+      for (const tok of seg.split(/\s+/).filter(Boolean)) {
+        let n = null;
+        if (/^\d{1,2}$/.test(tok)) n = Number(tok);
+        else if (NUMBER_WORDS[tok] != null) n = NUMBER_WORDS[tok];
+        if (n != null && n >= 1 && n <= ACCOUNTS.length) selected.add(ACCOUNTS[n - 1]);
+      }
+
+      ACCOUNTS.forEach(account => {
+        if (speechContainsAccount(seg, account)) selected.add(account);
+      });
+
+      return [...selected];
+    }
+
     function extractSpokenFields(text) {
       const s = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
 
@@ -1878,7 +1914,7 @@
           const clean = seg.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
           if (clean.length > 1) fields.movie = toTitleCase(clean);
         } else if (cur.field === "accounts") {
-          const accs = ACCOUNTS.filter(account => speechContainsAccount(segment, account));
+          const accs = extractAccountsFromSpeech(segment);
           if (accs.length) fields.accounts = accs;
         }
       }
