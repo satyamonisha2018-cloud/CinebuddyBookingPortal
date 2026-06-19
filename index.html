@@ -1738,6 +1738,27 @@
       return out.replace(/\s+/g, ' ').trim();
     }
 
+    // After Telugu→Latin transliteration, map phonetic approximations of English
+    // command keywords back to canonical English so the anchor parser finds them.
+    // Google te-IN often transcribes English words in Telugu script;
+    // e.g. "మూవీ నేమ్" → transliterate → "muvi nem" → normalize → "movie name".
+    function normalizeTeluguKeywords(text) {
+      return text
+        // Multi-word phrases first
+        .replace(/\bmuvi\s+nem[d]?\b/gi, 'movie name')
+        .replace(/\bsho\s+taim\b/gi, 'showtime')
+        .replace(/\bstet\s+or\s+ri[zj]an\b/gi, 'state or region')
+        // Single keywords
+        .replace(/\bmuvi\b/gi, 'movie')
+        .replace(/\bnem[d]?\b/gi, 'name')
+        .replace(/\bdet\b/gi, 'date')
+        .replace(/\bthiyetar\b/gi, 'theater')
+        .replace(/\bthietar\b/gi, 'theater')
+        .replace(/\bshotaim\b/gi, 'showtime')
+        .replace(/\bri[zj]an\b/gi, 'region')
+        .replace(/\bstet\b/gi, 'state');
+    }
+
     function extractSpokenFields(text) {
       const s = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
 
@@ -1790,17 +1811,21 @@
         } else if (cur.field === "time_anchor") {
           fields.time = extractTimeFromSpeech(segment) || fields.time;
         } else if (cur.field === "state") {
-          const matched = STATE_TOKENS.find(t => containsToken(segment, t));
-          fields.state = matched || (segment.length > 1 ? segment : null);
+          const seg = segment.replace(/^(?:is|iz)\s+/i, '').trim();
+          const matched = STATE_TOKENS.find(t => containsToken(seg, t))
+                       || Object.keys(CITY_ZONE_MAP).find(c => containsToken(seg, c));
+          fields.state = matched || (seg.length > 1 ? seg : null);
         } else if (cur.field === "theater") {
-          const clean = segment.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
+          const seg = segment.replace(/^(?:is|iz|called?|named?)\s+/i, '');
+          const clean = seg.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
           if (clean.length > 1) {
             let theater = toTitleCase(clean);
             if (!/^regal\b/i.test(theater)) theater = "Regal " + theater;
             fields.theater = theater;
           }
         } else if (cur.field === "movie") {
-          const clean = segment.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
+          const seg = segment.replace(/^(?:is|iz|called?|named?)\s+/i, '');
+          const clean = seg.replace(/\b(?:at|in|the|to|from|a|an)\b/gi, "").replace(/\s+/g, " ").trim();
           if (clean.length > 1) fields.movie = toTitleCase(clean);
         }
       }
@@ -1915,9 +1940,10 @@
         resetBtn();
         let transcript = finalTranscript.trim();
         if (transcript) {
-          // If Telugu script was captured, transliterate to Latin before parsing
+          // If Telugu script was captured, transliterate then normalize keywords
           if (/[ఀ-౿]/.test(transcript)) {
             transcript = transliterateTeluguToEnglish(transcript);
+            transcript = normalizeTeluguKeywords(transcript);
           }
           showTranscript(transcript);
           const fields = extractSpokenFields(transcript);
