@@ -1829,12 +1829,27 @@
       const seg = segment.toLowerCase();
       if (/\b(all|everyone|every\s*one|everybody|each)\b/.test(seg)) return ACCOUNTS.slice();
 
+      const N = ACCOUNTS.length;
+      const CONNECTORS = new Set(["and", "number", "numbers", "account", "accounts", "the", "n", "also", "plus", "comma", "is"]);
+      const tokens = seg.split(/\s+/).filter(Boolean);
+      // Names contain alphabetic words; pure number selection does not. We use this
+      // to decide whether a multi-digit token is a merged digit run ("2368" -> 2,3,6,8)
+      // or part of a name ("vamsi 24", "satyamonisha 2018").
+      const hasNameWords = tokens.some(t => /[a-z]/.test(t) && !(t in NUMBER_WORDS) && !CONNECTORS.has(t));
+
       const selected = new Set();
-      for (const tok of seg.split(/\s+/).filter(Boolean)) {
-        let n = null;
-        if (/^\d{1,2}$/.test(tok)) n = Number(tok);
-        else if (NUMBER_WORDS[tok] != null) n = NUMBER_WORDS[tok];
-        if (n != null && n >= 1 && n <= ACCOUNTS.length) selected.add(ACCOUNTS[n - 1]);
+      const addIndex = (n) => { if (n >= 1 && n <= N) selected.add(ACCOUNTS[n - 1]); };
+
+      for (const tok of tokens) {
+        if (NUMBER_WORDS[tok] != null) { addIndex(NUMBER_WORDS[tok]); continue; }
+        if (!/^\d+$/.test(tok)) continue;
+        if (tok.length === 1) {
+          addIndex(Number(tok));
+        } else if (!hasNameWords && !tok.includes("0")) {
+          // Recognizer merged spoken single digits, e.g. "2 3 6 8" -> "2368".
+          for (const ch of tok) addIndex(Number(ch));
+        }
+        // multi-digit token alongside names (e.g. "24" in "vamsi 24") -> left for name matching
       }
 
       ACCOUNTS.forEach(account => {
