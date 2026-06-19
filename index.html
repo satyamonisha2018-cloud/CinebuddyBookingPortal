@@ -1178,15 +1178,27 @@
       const isoMatch = lower.match(/\b(\d{4}-\d{2}-\d{2})\b/);
       if (isoMatch) return isoMatch[1];
 
-      const monthMatch = lower.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?\b/);
-      if (monthMatch) {
-        const month = MONTH_INDEX[monthMatch[1]];
-        const day = Number(monthMatch[2]);
-        const year = monthMatch[3] ? Number(monthMatch[3]) : today.getFullYear();
+      const MONTHS_RE = "(january|february|march|april|may|june|july|august|september|october|november|december)";
+
+      // "June 19th" or "June 19" — month first
+      const monthFirstMatch = lower.match(new RegExp(`\\b${MONTHS_RE}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`));
+      if (monthFirstMatch) {
+        const month = MONTH_INDEX[monthFirstMatch[1]];
+        const day = Number(monthFirstMatch[2]);
+        const year = monthFirstMatch[3] ? Number(monthFirstMatch[3]) : today.getFullYear();
         const resolved = new Date(year, month, day);
-        if (!monthMatch[3] && resolved < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
-          resolved.setFullYear(year + 1);
-        }
+        if (!monthFirstMatch[3] && resolved < new Date(today.getFullYear(), today.getMonth(), today.getDate())) resolved.setFullYear(resolved.getFullYear() + 1);
+        return `${resolved.getFullYear()}-${String(resolved.getMonth() + 1).padStart(2, "0")}-${String(resolved.getDate()).padStart(2, "0")}`;
+      }
+
+      // "19th June" or "19 June" or "the 19th of June" — day first
+      const dayFirstMatch = lower.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?${MONTHS_RE}(?:\\s+(\\d{4}))?\\b`));
+      if (dayFirstMatch) {
+        const day = Number(dayFirstMatch[1]);
+        const month = MONTH_INDEX[dayFirstMatch[2]];
+        const year = dayFirstMatch[3] ? Number(dayFirstMatch[3]) : today.getFullYear();
+        const resolved = new Date(year, month, day);
+        if (!dayFirstMatch[3] && resolved < new Date(today.getFullYear(), today.getMonth(), today.getDate())) resolved.setFullYear(resolved.getFullYear() + 1);
         return `${resolved.getFullYear()}-${String(resolved.getMonth() + 1).padStart(2, "0")}-${String(resolved.getDate()).padStart(2, "0")}`;
       }
 
