@@ -1040,8 +1040,25 @@
     </section>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const STORAGE_KEY = "cinebuddy.bookingChecker.v1";
+
+    /* ============================================================
+       CLOUD SYNC (Supabase) — paste your two project values below.
+       Leave them blank to keep using local-only (per-device) storage.
+       Setup steps are in the chat. The anon key is safe to expose.
+       ============================================================ */
+    const SUPABASE_URL = "";      // e.g. https://abcdwxyz.supabase.co
+    const SUPABASE_ANON_KEY = ""; // your project's public "anon" key
+
+    let sb = null;
+    try {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) { console.warn("Supabase init failed:", e); }
+
     const ACCOUNTS = [
       "Satyaam",
       "Satyaap",
@@ -1140,6 +1157,84 @@
     function saveState() {
       state.sessionDate = todayLocalDate();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    /* ===== Cloud sync helpers (no-ops when Supabase isn't configured) ===== */
+    async function cloudFetchAll() {
+      if (!sb) return null;
+      const { data, error } = await sb.from("bookings").select("id,date,data");
+      if (error) { console.warn("Cloud fetch failed:", error.message); return null; }
+      const days = {};
+      for (const row of data) {
+        const rec = row.data || {};
+        rec.id = rec.id || row.id;
+        rec.date = rec.date || row.date;
+        (days[rec.date] = days[rec.date] || []).push(rec);
+      }
+      return days;
+    }
+
+    async function cloudInsert(record) {
+      if (!sb) return;
+      const { error } = await sb.from("bookings")
+        .insert({ id: record.id, date: record.date, data: record });
+      if (error) console.warn("Cloud insert failed:", error.message);
+    }
+
+    async function cloudDelete(id) {
+      if (!sb) return;
+      const { error } = await sb.from("bookings").delete().eq("id", id);
+      if (error) console.warn("Cloud delete failed:", error.message);
+    }
+
+    // Pull the cloud copy, merge any local-only rows up, make cloud the source of truth, re-render.
+    async function refreshFromCloud(migrateLocal) {
+      if (!sb) return;
+      const cloudDays = await cloudFetchAll();
+      if (cloudDays === null) return; // offline / error → keep whatever we have
+
+      if (migrateLocal) {
+        const cloudIds = new Set();
+        for (const d of Object.keys(cloudDays)) for (const b of cloudDays[d]) cloudIds.add(b.id);
+        const uploads = [];
+        for (const d of Object.keys(state.days)) {
+          for (const b of state.days[d]) if (!cloudIds.has(b.id)) uploads.push(b);
+        }
+        if (uploads.length) {
+          const { error } = await sb.from("bookings")
+            .insert(uploads.map(b => ({ id: b.id, date: b.date, data: b })));
+          if (error) console.warn("Cloud migrate failed:", error.message);
+          else for (const b of uploads) (cloudDays[b.date] = cloudDays[b.date] || []).push(b);
+        }
+        // Drop past days from the cloud so the table stays tidy (matches local model).
+        const today = todayLocalDate();
+        sb.from("bookings").delete().lt("date", today).then(({ error }) => {
+          if (error) console.warn("Cloud purge failed:", error.message);
+        });
+      }
+
+      state.days = cloudDays;
+      purgePastDays(state.days);
+      saveState();
+      const active = currentDayFromInputs();
+      renderLedger(active);
+      renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+    }
+
+    function initCloudSync() {
+      if (!sb) return;
+      refreshFromCloud(true);
+      // Live updates from other devices.
+      try {
+        sb.channel("bookings-rt")
+          .on("postgres_changes", { event: "*", schema: "public", table: "bookings" },
+              () => refreshFromCloud(false))
+          .subscribe();
+      } catch (e) { console.warn("Realtime subscribe failed:", e); }
+      // Refetch whenever the tab regains focus (covers devices without realtime enabled).
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") refreshFromCloud(false);
+      });
     }
 
     function scheduleMidnightReset() {
@@ -1826,11 +1921,13 @@
       const bookings = getDay(record.date).slice();
       bookings.push(record);
       setDay(record.date, bookings);
+      cloudInsert(record);
     }
 
     function deleteBooking(dateStr, bookingId) {
       const bookings = getDay(dateStr).filter((entry) => entry.id !== bookingId);
       setDay(dateStr, bookings);
+      cloudDelete(bookingId);
       renderLedger(dateStr);
       const checkDate = els.checkDate.value;
       if (checkDate) renderAvailability(checkDate, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
@@ -2552,6 +2649,7 @@
     refreshZoneHints();
     renderAvailability(today, "12:00", getCheckZoneInfo(), "");
     scheduleMidnightReset();
+    initCloudSync();
   </script>
 </body>
 </html>
