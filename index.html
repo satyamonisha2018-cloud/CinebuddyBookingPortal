@@ -2454,11 +2454,17 @@
 
       recognition.onresult = (event) => {
         clearTimeout(silenceTimer);
+        // Rebuild the whole transcript from the full results list every time.
+        // Mobile browsers re-fire onresult with cumulative results and an
+        // unreliable resultIndex, so accumulating with += duplicates words.
+        let finalText = "";
         let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + " ";
-          else interim += event.results[i][0].transcript;
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) finalText += res[0].transcript + " ";
+          else interim += res[0].transcript + " ";
         }
+        finalTranscript = finalText;
         showTranscript((finalTranscript + interim).trim() || "Listening…");
         // Auto-stop 2.5 s after last speech segment
         silenceTimer = setTimeout(() => { if (activeRecognition) activeRecognition.stop(); }, 2500);
