@@ -2242,6 +2242,10 @@
       timePopEl = pop;
 
       pop.addEventListener("click", (e) => {
+        // Keep clicks inside the picker from reaching the outside-click watcher.
+        // (The dial re-renders on each pick, detaching the clicked node, which
+        // would otherwise look like an "outside" click and close the popover.)
+        e.stopPropagation();
         const num = e.target.closest(".tp-num");
         if (num) {
           const v = Number(num.dataset.val);
