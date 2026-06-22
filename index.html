@@ -2500,6 +2500,10 @@
         if (fields.theater)   els.checkTheater.value = fields.theater;
         if (fields.state)     els.checkState.value   = fields.state;
         if (fields.movie)     els.checkMovie.value   = fields.movie;
+        // Auto-run the check so results (and the "Book this" buttons) appear right away.
+        refreshZoneHints();
+        renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+        return;
       } else {
         // Clear all booking fields first
         els.bookingTheater.value = "";
