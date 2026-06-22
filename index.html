@@ -753,6 +753,106 @@
       font-weight: 800;
     }
 
+    /* ===== Custom time picker ===== */
+    .time-field { position: relative; }
+
+    .time-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 13px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line-strong);
+      background: rgba(5,9,15,0.6);
+      color: var(--text);
+      font-size: 0.94rem;
+      font-weight: 500;
+      box-shadow: none;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .time-trigger::after { display: none; } /* kill the shine sweep from button base */
+    .time-trigger:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: rgba(167,139,250,0.6);
+      background: rgba(8,13,21,0.85);
+    }
+    .time-trigger .time-trigger-text { color: var(--muted); }
+    .time-trigger.has-value .time-trigger-text { color: var(--text); }
+    .time-trigger-icon { font-size: 1rem; opacity: 0.75; }
+
+    .time-pop {
+      position: absolute;
+      z-index: 60;
+      width: 264px;
+      max-width: calc(100vw - 24px);
+      padding: 14px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(26,17,44,0.99), rgba(15,9,26,0.99));
+      border: 1px solid rgba(167,139,250,0.32);
+      box-shadow: 0 26px 60px rgba(12,2,30,0.6), 0 0 30px rgba(139,92,246,0.18);
+      display: none;
+    }
+    .time-pop.open { display: block; animation: pop-in 0.18s ease both; }
+
+    .time-pop-display {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(90deg,#c4b5fd,#f0abfc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+    .time-pop-section { margin-bottom: 12px; }
+    .time-pop-label {
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 7px;
+    }
+    .time-grid { display: grid; gap: 6px; }
+    .time-grid.hours, .time-grid.minutes { grid-template-columns: repeat(6, 1fr); }
+
+    .time-cell, .time-ap {
+      padding: 9px 0;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--text);
+      box-shadow: none;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .time-cell::after, .time-ap::after { display: none; }
+    .time-cell:hover, .time-ap:hover {
+      transform: translateY(-1px);
+      box-shadow: none;
+      border-color: rgba(167,139,250,0.5);
+      background: rgba(167,139,250,0.12);
+    }
+    .time-cell.selected, .time-ap.selected {
+      background: var(--grad);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(217,70,239,0.4);
+    }
+
+    .time-pop-ampm { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .time-ap { font-size: 0.84rem; font-weight: 800; }
+    .time-pop-actions { display: flex; justify-content: flex-end; }
+    .time-pop-done { padding: 8px 20px; font-size: 0.82rem; border-radius: 9px; }
+
     .ledger {
       display: flex;
       flex-direction: column;
@@ -981,7 +1081,13 @@
           <div class="grid-2">
             <label>
               Showtime
-              <input type="time" id="bookingTime" required />
+              <div class="time-field">
+                <button type="button" class="time-trigger" id="bookingTimeTrigger" data-input="bookingTime">
+                  <span class="time-trigger-text">--:-- --</span>
+                  <span class="time-trigger-icon">🕐</span>
+                </button>
+                <input type="hidden" id="bookingTime" />
+              </div>
             </label>
             <div class="account-picker">
               <div class="account-picker-bar">
@@ -1005,7 +1111,6 @@
 
           <div class="actions">
             <button type="submit">Save booking</button>
-            <button type="button" class="secondary" id="useTodayBtn">Use today</button>
             <button type="button" class="secondary" id="voiceFillBtn">Voice fill</button>
           </div>
           <div class="transcript-box" id="bookingTranscript">
@@ -1049,7 +1154,13 @@
           <div class="grid-2">
             <label>
               Showtime
-              <input type="time" id="checkTime" required />
+              <div class="time-field">
+                <button type="button" class="time-trigger" id="checkTimeTrigger" data-input="checkTime">
+                  <span class="time-trigger-text">--:-- --</span>
+                  <span class="time-trigger-icon">🕐</span>
+                </button>
+                <input type="hidden" id="checkTime" />
+              </div>
             </label>
             <label>
               Movie name
@@ -1059,7 +1170,6 @@
 
           <div class="actions">
             <button type="submit">Check accounts</button>
-            <button type="button" class="secondary" id="syncBtn">Sync from booking form</button>
             <button type="button" class="secondary" id="voiceCheckBtn">Voice fill</button>
           </div>
           <div class="transcript-box" id="checkTranscript">
@@ -1136,11 +1246,9 @@
       accountCount: document.getElementById("accountCount"),
       bookingCount: document.getElementById("bookingCount"),
       activeDayChip: document.getElementById("activeDayChip"),
-      useTodayBtn: document.getElementById("useTodayBtn"),
       voiceFillBtn: document.getElementById("voiceFillBtn"),
       selectAllAccountsBtn: document.getElementById("selectAllAccountsBtn"),
       clearAccountsBtn: document.getElementById("clearAccountsBtn"),
-      syncBtn: document.getElementById("syncBtn"),
       voiceCheckBtn: document.getElementById("voiceCheckBtn"),
       ledgerHeading: document.getElementById("ledgerHeading"),
       httpsNotice: document.getElementById("httpsNotice"),
@@ -1991,6 +2099,130 @@
       showToast(`✓ Booked "${ctx.movie}" on ${account}`);
     }
 
+    /* ===== Custom clickable time picker (same UX on phone & desktop) ===== */
+    let timePopEl = null;
+    let timePicker = { input: null, h12: null, min: 0, ampm: "PM" };
+
+    function parse24(val) {
+      if (!/^\d{1,2}:\d{2}$/.test(val || "")) return null;
+      const [h, m] = val.split(":").map(Number);
+      const ampm = h >= 12 ? "PM" : "AM";
+      let h12 = h % 12; if (h12 === 0) h12 = 12;
+      return { h12, min: m, ampm };
+    }
+    function to24(h12, min, ampm) {
+      let h = h12 % 12;
+      if (ampm === "PM") h += 12;
+      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    }
+    function fmt12(val) {
+      const p = parse24(val);
+      return p ? `${p.h12}:${String(p.min).padStart(2, "0")} ${p.ampm}` : "--:-- --";
+    }
+    function updateTimeDisplay(id) {
+      const trigger = document.getElementById(id + "Trigger");
+      if (!trigger) return;
+      const input = document.getElementById(id);
+      trigger.querySelector(".time-trigger-text").textContent = fmt12(input.value);
+      trigger.classList.toggle("has-value", !!parse24(input.value));
+    }
+    function setTimeFieldValue(inputEl, val) {
+      inputEl.value = val || "";
+      updateTimeDisplay(inputEl.id);
+    }
+    function renderTimePop() {
+      const hh = timePicker.h12 == null ? "--" : timePicker.h12;
+      document.getElementById("timePopDisplay").textContent =
+        `${hh}:${String(timePicker.min).padStart(2, "0")} ${timePicker.ampm}`;
+      timePopEl.querySelectorAll(".time-cell[data-h]").forEach(b =>
+        b.classList.toggle("selected", Number(b.dataset.h) === timePicker.h12));
+      timePopEl.querySelectorAll(".time-cell[data-m]").forEach(b =>
+        b.classList.toggle("selected", Number(b.dataset.m) === timePicker.min));
+      timePopEl.querySelectorAll(".time-ap").forEach(b =>
+        b.classList.toggle("selected", b.dataset.ap === timePicker.ampm));
+    }
+    function commitTime() {
+      if (timePicker.h12 == null) return;
+      timePicker.input.value = to24(timePicker.h12, timePicker.min, timePicker.ampm);
+      updateTimeDisplay(timePicker.input.id);
+    }
+    function openTimePicker(inputId, triggerEl) {
+      const input = document.getElementById(inputId);
+      const cur = parse24(input.value);
+      timePicker = {
+        input,
+        h12: cur ? cur.h12 : null,
+        min: cur ? cur.min : 0,
+        ampm: cur ? cur.ampm : "PM",
+      };
+      renderTimePop();
+      const rect = triggerEl.getBoundingClientRect();
+      const popWidth = 264;
+      timePopEl.style.top = (rect.bottom + window.scrollY + 6) + "px";
+      let left = rect.left + window.scrollX;
+      const maxLeft = window.scrollX + document.documentElement.clientWidth - popWidth - 12;
+      left = Math.max(window.scrollX + 12, Math.min(left, maxLeft));
+      timePopEl.style.left = left + "px";
+      timePopEl.classList.add("open");
+    }
+    function closeTimePicker() {
+      if (timePopEl) timePopEl.classList.remove("open");
+    }
+    function setupTimePickers() {
+      const pop = document.createElement("div");
+      pop.className = "time-pop";
+      pop.id = "timePop";
+      const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+      const mins = Array.from({ length: 12 }, (_, i) => i * 5);
+      pop.innerHTML = `
+        <div class="time-pop-display" id="timePopDisplay">--:-- --</div>
+        <div class="time-pop-section">
+          <div class="time-pop-label">Hour</div>
+          <div class="time-grid hours">${hours.map(h => `<button type="button" class="time-cell" data-h="${h}">${h}</button>`).join("")}</div>
+        </div>
+        <div class="time-pop-section">
+          <div class="time-pop-label">Minute</div>
+          <div class="time-grid minutes">${mins.map(m => `<button type="button" class="time-cell" data-m="${m}">${String(m).padStart(2, "0")}</button>`).join("")}</div>
+        </div>
+        <div class="time-pop-ampm">
+          <button type="button" class="time-ap" data-ap="AM">AM</button>
+          <button type="button" class="time-ap" data-ap="PM">PM</button>
+        </div>
+        <div class="time-pop-actions"><button type="button" class="time-pop-done">Done</button></div>
+      `;
+      document.body.appendChild(pop);
+      timePopEl = pop;
+
+      pop.addEventListener("click", (e) => {
+        const el = e.target.closest(".time-cell, .time-ap, .time-pop-done");
+        if (!el) return;
+        if (el.classList.contains("time-pop-done")) { closeTimePicker(); return; }
+        if (el.dataset.h) timePicker.h12 = Number(el.dataset.h);
+        else if (el.dataset.m != null && el.dataset.m !== "") timePicker.min = Number(el.dataset.m);
+        else if (el.dataset.ap) timePicker.ampm = el.dataset.ap;
+        commitTime();
+        renderTimePop();
+      });
+
+      document.querySelectorAll(".time-trigger").forEach((tr) => {
+        tr.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (timePopEl.classList.contains("open")) { closeTimePicker(); return; }
+          openTimePicker(tr.getAttribute("data-input"), tr);
+        });
+      });
+
+      ["bookingTime", "checkTime"].forEach(updateTimeDisplay);
+
+      document.addEventListener("click", (e) => {
+        if (!timePopEl.classList.contains("open")) return;
+        if (e.target.closest(".time-pop") || e.target.closest(".time-trigger")) return;
+        closeTimePicker();
+      });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeTimePicker(); });
+      window.addEventListener("scroll", () => closeTimePicker(), true);
+    }
+
     function newBookingId() {
       return crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
     }
@@ -2496,13 +2728,15 @@
         els.checkMovie.value   = "";
         els.checkState.value   = "";
         if (fields.date)    { els.checkDate.value    = fields.date;    els.bookingDate.value = fields.date; }
-        if (fields.time)      els.checkTime.value    = fields.time;
+        if (fields.time)      setTimeFieldValue(els.checkTime, fields.time);
         if (fields.theater)   els.checkTheater.value = fields.theater;
         if (fields.state)     els.checkState.value   = fields.state;
         if (fields.movie)     els.checkMovie.value   = fields.movie;
         // Auto-run the check so results (and the "Book this" buttons) appear right away.
         refreshZoneHints();
-        renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+        if (els.checkTime.value) {
+          renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+        }
         return;
       } else {
         // Clear all booking fields first
@@ -2510,7 +2744,7 @@
         els.bookingMovie.value   = "";
         els.bookingState.value   = "";
         if (fields.date)    { els.bookingDate.value    = fields.date;    els.checkDate.value = fields.date; }
-        if (fields.time)      els.bookingTime.value    = fields.time;
+        if (fields.time)      setTimeFieldValue(els.bookingTime, fields.time);
         if (fields.theater)   els.bookingTheater.value = fields.theater;
         if (fields.state)     els.bookingState.value   = fields.state;
         if (fields.movie)     els.bookingMovie.value   = fields.movie;
@@ -2649,6 +2883,11 @@
       const theater = els.bookingTheater.value.trim();
       const stateOrRegion = els.bookingState.value.trim();
 
+      if (!time) {
+        alert("Please pick a showtime.");
+        return;
+      }
+
       if (!selectedAccounts.length) {
         alert("Select at least one account.");
         return;
@@ -2694,11 +2933,11 @@
 
     els.checkForm.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (!els.checkTime.value) {
+        alert("Please pick a showtime.");
+        return;
+      }
       renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
-    });
-
-    els.useTodayBtn.addEventListener("click", () => {
-      fillToday();
     });
 
     els.voiceFillBtn.addEventListener("click", () => startVoiceFill("booking"));
@@ -2739,16 +2978,6 @@
       if (btn.dataset.account) bookFromChecker(btn.dataset.account);
     });
 
-    els.syncBtn.addEventListener("click", () => {
-      els.checkDate.value = els.bookingDate.value;
-      els.checkTime.value = els.bookingTime.value;
-      els.checkMovie.value = els.bookingMovie.value.trim();
-      els.checkTheater.value = els.bookingTheater.value.trim();
-      els.checkState.value = els.bookingState.value.trim();
-      refreshZoneHints();
-      renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value);
-    });
-
     [els.bookingDate, els.checkDate].forEach((input) => {
       input.addEventListener("change", () => {
         const date = input.value;
@@ -2765,6 +2994,7 @@
     });
 
     populateAccounts();
+    setupTimePickers();
     const today = todayLocalDate();
     els.bookingDate.value = today;
     els.checkDate.value = today;
