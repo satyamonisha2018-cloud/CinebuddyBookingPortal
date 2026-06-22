@@ -741,6 +741,18 @@
       line-height: 1.45;
     }
 
+    .book-this-btn {
+      justify-self: start;
+      margin-top: 4px;
+      padding: 6px 13px;
+      font-size: 0.76rem;
+      border-radius: 8px;
+    }
+    .book-this-btn::before {
+      content: "+ ";
+      font-weight: 800;
+    }
+
     .ledger {
       display: flex;
       flex-direction: column;
@@ -872,6 +884,28 @@
       background: var(--surface-2);
       font-size:0.86rem;
     }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 20px);
+      z-index: 50;
+      max-width: min(92vw, 420px);
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(34,20,52,0.96), rgba(20,12,30,0.96));
+      border: 1px solid rgba(167,139,250,0.4);
+      box-shadow: 0 16px 40px rgba(12,2,30,0.55), 0 0 22px rgba(139,92,246,0.25);
+      color: #f3f0fb;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease, transform 0.28s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     @media (max-width: 980px) {
       .layout { grid-template-columns: 1fr; }
@@ -1887,11 +1921,16 @@
         .replaceAll("'", "&#39;");
     }
 
+    // Holds the exact request that produced the current checker results, so the
+    // one-tap "Book this" button saves precisely what was checked.
+    let lastCheckContext = null;
+
     function renderAvailability(dateStr, timeStr, zoneInfo, movie) {
       if (!zoneInfo) {
         els.checkSummary.className = "result-banner bad";
         els.checkSummary.textContent = "Add a state or a more specific theater name so I can infer the time zone.";
         els.accountGrid.innerHTML = '<div class="empty">No results until the timezone can be inferred.</div>';
+        lastCheckContext = null;
         return;
       }
 
@@ -1909,12 +1948,78 @@
         ? `<strong>${available.length} accounts are available.</strong> ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`
         : `<strong>No accounts are available.</strong> Every account is blocked by the same-movie rule or the 90-minute gap rule for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
 
+      // "Book this" is only offered when there's a real movie + date + time to save.
+      const movieClean = (movie || "").trim();
+      const canBook = Boolean(dateStr && timeStr && movieClean);
+      lastCheckContext = canBook ? {
+        date: dateStr,
+        time: timeStr,
+        movie: movieClean,
+        theater: els.checkTheater.value.trim(),
+        stateOrRegion: els.checkState.value.trim(),
+        zoneInfo,
+      } : null;
+
       els.accountGrid.innerHTML = results.map((entry) => `
         <article class="account-card ${entry.available ? "available" : "unavailable"}">
           <div class="account-name">${escapeHtml(entry.account)}</div>
           <div class="reason">${escapeHtml(entry.reason)}</div>
+          ${entry.available && canBook ? `<button type="button" class="book-this-btn" data-account="${escapeHtml(entry.account)}">Book this</button>` : ""}
         </article>
       `).join("");
+    }
+
+    // One-tap save from a checker result card.
+    function bookFromChecker(account) {
+      const ctx = lastCheckContext;
+      if (!ctx || !ctx.zoneInfo) return;
+      const zone = ctx.zoneInfo.zone;
+
+      // Re-validate at click time (data may have changed since the check ran).
+      const check = evaluateAccount(account, ctx.date, ctx.movie, ctx.time, zone);
+      if (!check.available) {
+        if (!confirm(`This now clashes for ${account}:\n\n${check.reason}\n\nBook anyway?`)) return;
+      }
+
+      addBooking(makeBookingRecord({
+        date: ctx.date, time: ctx.time, zone, zoneSource: ctx.zoneInfo.source,
+        account, movie: ctx.movie, theater: ctx.theater, stateOrRegion: ctx.stateOrRegion,
+      }));
+
+      renderLedger(ctx.date);
+      renderAvailability(ctx.date, ctx.time, ctx.zoneInfo, ctx.movie);
+      showToast(`✓ Booked "${ctx.movie}" on ${account}`);
+    }
+
+    function newBookingId() {
+      return crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+    }
+
+    // Single source of truth for the shape of a booking record (used by both
+    // the booking form and the one-tap "Book this" button in the checker).
+    function makeBookingRecord({ date, time, zone, zoneSource, account, movie, theater, stateOrRegion }) {
+      return {
+        id: newBookingId(),
+        date,
+        time,
+        timeZone: zone,
+        timeZoneLabel: timezoneLabel[zone],
+        timeZoneSource: zoneSource,
+        account,
+        movie,
+        theater,
+        stateOrRegion,
+        timestampUtc: zonedToUtcTimestamp(date, time, zone),
+      };
+    }
+
+    function showToast(message) {
+      const t = document.createElement("div");
+      t.className = "toast";
+      t.textContent = message;
+      document.body.appendChild(t);
+      requestAnimationFrame(() => t.classList.add("show"));
+      setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 2600);
     }
 
     function addBooking(record) {
@@ -2545,21 +2650,23 @@
         return;
       }
 
-      const timestampUtc = zonedToUtcTimestamp(date, time, timeZone);
+      // Guardrail: warn before saving anything that breaks the rules.
+      const clashes = selectedAccounts
+        .map((account) => ({ account, result: evaluateAccount(account, date, movie, time, timeZone) }))
+        .filter((x) => !x.result.available);
+      if (clashes.length) {
+        const lines = clashes.map((c) => `• ${c.account}: ${c.result.reason}`).join("\n");
+        const proceed = confirm(
+          `This booking clashes for ${clashes.length} account${clashes.length > 1 ? "s" : ""}:\n\n${lines}\n\nSave anyway?`
+        );
+        if (!proceed) return;
+      }
+
       selectedAccounts.forEach((account) => {
-        addBooking({
-          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
-          date,
-          time,
-          timeZone,
-          timeZoneLabel: timezoneLabel[timeZone],
-          timeZoneSource: zoneInfo.source,
-          account,
-          movie,
-          theater,
-          stateOrRegion,
-          timestampUtc,
-        });
+        addBooking(makeBookingRecord({
+          date, time, zone: timeZone, zoneSource: zoneInfo.source,
+          account, movie, theater, stateOrRegion,
+        }));
       });
 
       renderLedger(date);
@@ -2620,6 +2727,12 @@
       if (!btn) return;
       const { date, id } = btn.dataset;
       if (date && id) deleteBooking(date, id);
+    });
+
+    els.accountGrid.addEventListener("click", (event) => {
+      const btn = event.target.closest(".book-this-btn");
+      if (!btn) return;
+      if (btn.dataset.account) bookFromChecker(btn.dataset.account);
     });
 
     els.syncBtn.addEventListener("click", () => {
