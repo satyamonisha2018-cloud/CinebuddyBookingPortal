@@ -798,35 +798,21 @@
     }
     .time-pop.open { display: block; animation: pop-in 0.18s ease both; }
 
-    .time-pop-display {
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      margin-bottom: 12px;
-      background: linear-gradient(90deg,#c4b5fd,#f0abfc);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      color: transparent;
-    }
-    .time-pop-section { margin-bottom: 12px; }
-    .time-pop-label {
-      font-size: 0.64rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      font-weight: 800;
-      margin-bottom: 7px;
-    }
-    .time-grid { display: grid; gap: 6px; }
-    .time-grid.hours, .time-grid.minutes { grid-template-columns: repeat(6, 1fr); }
+    /* clock-dial picker */
+    .time-pop.clock { width: 262px; }
 
-    .time-cell, .time-ap {
-      padding: 9px 0;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      font-weight: 700;
+    .tp-head {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .tp-hh, .tp-mm {
+      font-size: 1.7rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 10px;
       background: var(--surface-2);
       border: 1px solid var(--line);
       color: var(--text);
@@ -834,24 +820,71 @@
       text-transform: none;
       letter-spacing: normal;
     }
-    .time-cell::after, .time-ap::after { display: none; }
-    .time-cell:hover, .time-ap:hover {
-      transform: translateY(-1px);
-      box-shadow: none;
+    .tp-hh::after, .tp-mm::after, .tp-ap::after, .tp-done::after { display: none; }
+    .tp-hh:hover, .tp-mm:hover { transform: none; box-shadow: none; }
+    .tp-hh.active, .tp-mm.active {
+      background: var(--accent-soft);
       border-color: rgba(167,139,250,0.5);
-      background: rgba(167,139,250,0.12);
+      color: #d8b4fe;
     }
-    .time-cell.selected, .time-ap.selected {
-      background: var(--grad);
-      border-color: transparent;
-      color: #fff;
-      box-shadow: 0 0 12px rgba(217,70,239,0.4);
+    .tp-colon { font-size: 1.6rem; font-weight: 800; color: var(--muted); }
+    .tp-ampm { display: flex; flex-direction: column; gap: 4px; margin-left: 8px; }
+    .tp-ap {
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--text);
+      box-shadow: none;
+      text-transform: none;
+      letter-spacing: normal;
     }
+    .tp-ap:hover { transform: none; box-shadow: none; border-color: rgba(167,139,250,0.5); }
+    .tp-ap.selected { background: var(--grad); border-color: transparent; color: #fff; }
 
-    .time-pop-ampm { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-    .time-ap { font-size: 0.84rem; font-weight: 800; }
-    .time-pop-actions { display: flex; justify-content: flex-end; }
-    .time-pop-done { padding: 8px 20px; font-size: 0.82rem; border-radius: 9px; }
+    .tp-dial {
+      position: relative;
+      width: 230px;
+      height: 230px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 50%, rgba(167,139,250,0.08), rgba(255,255,255,0.02));
+      border: 1px solid var(--line);
+    }
+    .tp-center {
+      position: absolute; left: 50%; top: 50%;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); transform: translate(-50%, -50%); z-index: 3;
+    }
+    .tp-hand {
+      position: absolute; left: 50%; bottom: 50%;
+      width: 2px; height: 92px;
+      background: linear-gradient(to top, var(--accent), #ec4899);
+      transform-origin: bottom center; z-index: 1;
+    }
+    .tp-hand::before {
+      content: ""; position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(167,139,250,0.22); border: 1px solid rgba(167,139,250,0.5);
+    }
+    .tp-num {
+      position: absolute;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      font-size: 0.92rem; font-weight: 700;
+      background: transparent; border: 0; color: var(--text);
+      box-shadow: none; padding: 0; z-index: 2;
+      text-transform: none; letter-spacing: normal;
+    }
+    .tp-num::after { display: none; }
+    .tp-num:hover { background: rgba(167,139,250,0.18); transform: none; box-shadow: none; }
+    .tp-num.selected { background: var(--grad); color: #fff; box-shadow: 0 0 12px rgba(217,70,239,0.45); }
+
+    .tp-actions { display: flex; justify-content: flex-end; }
+    .tp-done { padding: 8px 22px; font-size: 0.82rem; border-radius: 9px; }
 
     .ledger {
       display: flex;
@@ -2101,7 +2134,7 @@
 
     /* ===== Custom clickable time picker (same UX on phone & desktop) ===== */
     let timePopEl = null;
-    let timePicker = { input: null, h12: null, min: 0, ampm: "PM" };
+    let timePicker = { input: null, h12: null, min: 0, ampm: "PM", mode: "hour" };
 
     function parse24(val) {
       if (!/^\d{1,2}:\d{2}$/.test(val || "")) return null;
@@ -2131,15 +2164,34 @@
       updateTimeDisplay(inputEl.id);
     }
     function renderTimePop() {
-      const hh = timePicker.h12 == null ? "--" : timePicker.h12;
-      document.getElementById("timePopDisplay").textContent =
-        `${hh}:${String(timePicker.min).padStart(2, "0")} ${timePicker.ampm}`;
-      timePopEl.querySelectorAll(".time-cell[data-h]").forEach(b =>
-        b.classList.toggle("selected", Number(b.dataset.h) === timePicker.h12));
-      timePopEl.querySelectorAll(".time-cell[data-m]").forEach(b =>
-        b.classList.toggle("selected", Number(b.dataset.m) === timePicker.min));
-      timePopEl.querySelectorAll(".time-ap").forEach(b =>
+      const hhBtn = timePopEl.querySelector(".tp-hh");
+      const mmBtn = timePopEl.querySelector(".tp-mm");
+      hhBtn.textContent = timePicker.h12 == null ? "--" : String(timePicker.h12).padStart(2, "0");
+      mmBtn.textContent = String(timePicker.min).padStart(2, "0");
+      hhBtn.classList.toggle("active", timePicker.mode === "hour");
+      mmBtn.classList.toggle("active", timePicker.mode === "minute");
+      timePopEl.querySelectorAll(".tp-ap").forEach(b =>
         b.classList.toggle("selected", b.dataset.ap === timePicker.ampm));
+
+      const c = 115, r = 92, ns = 36; // dial centre, number radius, number size
+      const isHour = timePicker.mode === "hour";
+      const nums = isHour
+        ? Array.from({ length: 12 }, (_, i) => ({ label: String(i + 1), val: i + 1, angle: ((i + 1) % 12) * 30 }))
+        : Array.from({ length: 12 }, (_, i) => ({ label: String(i * 5).padStart(2, "0"), val: i * 5, angle: (i * 5) * 6 }));
+      const selVal = isHour ? timePicker.h12 : timePicker.min;
+      const handA = isHour ? (timePicker.h12 == null ? 0 : (timePicker.h12 % 12) * 30) : timePicker.min * 6;
+
+      const numHtml = nums.map((n) => {
+        const rad = n.angle * Math.PI / 180;
+        const x = c + r * Math.sin(rad);
+        const y = c - r * Math.cos(rad);
+        const sel = selVal === n.val ? " selected" : "";
+        return `<button type="button" class="tp-num${sel}" data-val="${n.val}" style="left:${(x - ns / 2).toFixed(1)}px;top:${(y - ns / 2).toFixed(1)}px;">${n.label}</button>`;
+      }).join("");
+
+      const showHand = !(isHour && timePicker.h12 == null);
+      const handHtml = `<div class="tp-hand" style="transform:translateX(-50%) rotate(${handA}deg);${showHand ? "" : "display:none;"}"></div>`;
+      document.getElementById("tpDial").innerHTML = `<div class="tp-center"></div>${handHtml}${numHtml}`;
     }
     function commitTime() {
       if (timePicker.h12 == null) return;
@@ -2154,6 +2206,7 @@
         h12: cur ? cur.h12 : null,
         min: cur ? cur.min : 0,
         ampm: cur ? cur.ampm : "PM",
+        mode: "hour",
       };
       renderTimePop();
       const rect = triggerEl.getBoundingClientRect();
@@ -2170,38 +2223,39 @@
     }
     function setupTimePickers() {
       const pop = document.createElement("div");
-      pop.className = "time-pop";
+      pop.className = "time-pop clock";
       pop.id = "timePop";
-      const hours = Array.from({ length: 12 }, (_, i) => i + 1);
-      const mins = Array.from({ length: 12 }, (_, i) => i * 5);
       pop.innerHTML = `
-        <div class="time-pop-display" id="timePopDisplay">--:-- --</div>
-        <div class="time-pop-section">
-          <div class="time-pop-label">Hour</div>
-          <div class="time-grid hours">${hours.map(h => `<button type="button" class="time-cell" data-h="${h}">${h}</button>`).join("")}</div>
+        <div class="tp-head">
+          <button type="button" class="tp-hh active">--</button>
+          <span class="tp-colon">:</span>
+          <button type="button" class="tp-mm">00</button>
+          <div class="tp-ampm">
+            <button type="button" class="tp-ap" data-ap="AM">AM</button>
+            <button type="button" class="tp-ap" data-ap="PM">PM</button>
+          </div>
         </div>
-        <div class="time-pop-section">
-          <div class="time-pop-label">Minute</div>
-          <div class="time-grid minutes">${mins.map(m => `<button type="button" class="time-cell" data-m="${m}">${String(m).padStart(2, "0")}</button>`).join("")}</div>
-        </div>
-        <div class="time-pop-ampm">
-          <button type="button" class="time-ap" data-ap="AM">AM</button>
-          <button type="button" class="time-ap" data-ap="PM">PM</button>
-        </div>
-        <div class="time-pop-actions"><button type="button" class="time-pop-done">Done</button></div>
+        <div class="tp-dial" id="tpDial"></div>
+        <div class="tp-actions"><button type="button" class="tp-done">Done</button></div>
       `;
       document.body.appendChild(pop);
       timePopEl = pop;
 
       pop.addEventListener("click", (e) => {
-        const el = e.target.closest(".time-cell, .time-ap, .time-pop-done");
-        if (!el) return;
-        if (el.classList.contains("time-pop-done")) { closeTimePicker(); return; }
-        if (el.dataset.h) timePicker.h12 = Number(el.dataset.h);
-        else if (el.dataset.m != null && el.dataset.m !== "") timePicker.min = Number(el.dataset.m);
-        else if (el.dataset.ap) timePicker.ampm = el.dataset.ap;
-        commitTime();
-        renderTimePop();
+        const num = e.target.closest(".tp-num");
+        if (num) {
+          const v = Number(num.dataset.val);
+          if (timePicker.mode === "hour") { timePicker.h12 = v; timePicker.mode = "minute"; }
+          else { timePicker.min = v; }
+          commitTime();
+          renderTimePop();
+          return;
+        }
+        if (e.target.closest(".tp-hh")) { timePicker.mode = "hour"; renderTimePop(); return; }
+        if (e.target.closest(".tp-mm")) { timePicker.mode = "minute"; renderTimePop(); return; }
+        const ap = e.target.closest(".tp-ap");
+        if (ap) { timePicker.ampm = ap.dataset.ap; commitTime(); renderTimePop(); return; }
+        if (e.target.closest(".tp-done")) { closeTimePicker(); return; }
       });
 
       document.querySelectorAll(".time-trigger").forEach((tr) => {
