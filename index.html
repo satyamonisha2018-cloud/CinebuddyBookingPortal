@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Cinebuddy Booking Checker</title>
+
+  <!-- Installable web app (Add to Home Screen) -->
+  <meta name="theme-color" content="#0c0718" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cinebuddy" />
+  <link rel="apple-touch-icon" href="" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238b5cf6'/%3E%3Cstop offset='0.5' stop-color='%23d946ef'/%3E%3Cstop offset='1' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Ctext x='50' y='68' font-size='54' text-anchor='middle'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
       color-scheme: dark;
@@ -109,7 +118,7 @@
     }
 
     .wrap {
-      width: min(1340px, calc(100% - 32px));
+      width: min(760px, calc(100% - 32px));
       margin: 0 auto;
       padding: 18px 0 28px;
       position: relative;
@@ -234,8 +243,8 @@
       transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
     }
 
-    #bookingPanel { animation-delay: 0.08s; }
-    #checkerPanel { animation-delay: 0.16s; }
+    #checkerPanel { animation-delay: 0.08s; }
+    #ledgerPanel  { animation-delay: 0.16s; margin-top: 16px; }
 
     .panel:hover {
       transform: translateY(-3px);
@@ -251,9 +260,134 @@
 
     .layout {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 16px;
       align-items: start;
+    }
+
+    /* 1-2-3 steps strip under the checker header */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 2px 0 14px;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.3;
+    }
+    .step b {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--grad-cyan);
+      color: #fff;
+      font-size: 0.74rem;
+      font-weight: 800;
+    }
+    @media (max-width: 560px) {
+      .steps { grid-template-columns: 1fr; }
+    }
+
+    /* Collapsible "Today" date chip */
+    .date-quick {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 13px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      font-size: 0.86rem;
+    }
+    .date-quick-cal { font-size: 1rem; opacity: 0.85; }
+    .date-quick-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .date-quick-value { font-weight: 700; color: var(--text); }
+    .date-quick-btn {
+      margin-left: auto;
+      padding: 6px 12px;
+      font-size: 0.76rem;
+      border-radius: 8px;
+      background: var(--surface-3);
+      color: var(--text);
+      border: 1px solid var(--line-strong);
+      box-shadow: none;
+    }
+    .date-quick-btn::after { display: none; }
+    .date-quick-btn:hover { transform: none; box-shadow: none; background: rgba(167,139,250,0.14); }
+    .date-quick input[type="date"] {
+      width: auto;
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 8px 10px;
+    }
+    .date-quick.editing .date-quick-value,
+    .date-quick.editing .date-quick-btn { display: none; }
+    .date-quick:not(.editing) input[type="date"] { display: none; }
+
+    /* Autocomplete (type-to-filter dropdown) */
+    .ac-field { position: relative; }
+    .ac-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 45;
+      max-height: 230px;
+      overflow-y: auto;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, rgba(26,17,44,0.99), rgba(15,9,26,0.99));
+      border: 1px solid rgba(167,139,250,0.32);
+      box-shadow: 0 24px 54px rgba(12,2,30,0.6);
+      display: none;
+    }
+    .ac-menu.open { display: block; animation: pop-in 0.16s ease both; }
+    .ac-item {
+      padding: 10px 12px;
+      border-radius: var(--radius-xs);
+      font-size: 0.9rem;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      line-height: 1.3;
+    }
+    .ac-item:hover,
+    .ac-item.active {
+      background: linear-gradient(180deg, rgba(167,139,250,0.18), rgba(236,72,153,0.08));
+    }
+    .ac-item .ac-tag {
+      margin-left: auto;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .ac-empty {
+      padding: 10px 12px;
+      font-size: 0.84rem;
+      color: var(--muted);
     }
 
     .panel h2 {
@@ -1072,7 +1206,7 @@
       <div class="brand-block">
         <div class="brand-kicker">Regal Unlimited assistant</div>
         <div class="brand-name">Cinebuddy Booking Checker</div>
-        <div class="brand-note">A focused workspace for multi-account booking, timezone inference, and quick checks that stays fast, clear, and easy to trust.</div>
+        <div class="brand-note">Check which of your accounts are free for a show, then save it with one tap. Timezone is detected for you.</div>
       </div>
       <div class="brand-pills">
         <div class="brand-pill">Auto timezone</div>
@@ -1088,98 +1222,44 @@
       </div>
     </header>
     <section class="layout">
-      <div class="panel" id="bookingPanel">
-        <h2>Booking entry</h2>
-        <p class="sub">Enter the booking once and save it across the selected accounts.</p>
-
-        <form id="bookingForm">
-          <div class="grid-2">
-            <label>
-              Date
-              <input type="date" id="bookingDate" required />
-            </label>
-            <label>
-              State or region
-              <input type="text" id="bookingState" placeholder="Example: Virginia or VA" />
-            </label>
-          </div>
-
-          <label>
-            Theater
-            <input type="text" id="bookingTheater" placeholder="Example: Regal Indian Lake" required />
-          </label>
-
-          <div class="zone-pill" id="bookingZoneHint">Timezone will be inferred from theater or state.</div>
-
-          <div class="grid-2">
-            <label>
-              Showtime
-              <div class="time-field">
-                <button type="button" class="time-trigger" id="bookingTimeTrigger" data-input="bookingTime">
-                  <span class="time-trigger-text">--:-- --</span>
-                  <span class="time-trigger-icon">🕐</span>
-                </button>
-                <input type="hidden" id="bookingTime" />
-              </div>
-            </label>
-            <div class="account-picker">
-              <div class="account-picker-bar">
-                <label style="gap:0.35rem;">
-                  Accounts
-                  <span class="account-picker-count" id="bookingAccountCount">0 selected</span>
-                </label>
-                <div class="actions" style="margin-top:0;">
-                  <button type="button" class="secondary" id="selectAllAccountsBtn">Select all</button>
-                  <button type="button" class="secondary" id="clearAccountsBtn">Clear</button>
-                </div>
-              </div>
-              <div class="account-options" id="bookingAccountOptions"></div>
-            </div>
-          </div>
-
-          <label>
-            Movie name
-            <input type="text" id="bookingMovie" placeholder="Example: ABC" required />
-          </label>
-
-          <div class="actions">
-            <button type="submit">Save booking</button>
-            <button type="button" class="secondary" id="voiceFillBtn">Voice fill</button>
-          </div>
-          <div class="transcript-box" id="bookingTranscript">
-            <div class="transcript-label">Heard</div>
-            <span id="bookingTranscriptText"></span>
-          </div>
-        </form>
-
-        <h2 id="ledgerHeading" style="margin:14px 0 0; display:none; font-family:Georgia,'Times New Roman',serif; font-size:1.02rem; letter-spacing:-0.02em;">Saved bookings</h2>
-        <div id="bookingLedger" class="ledger" hidden></div>
-      </div>
-
       <div class="panel" id="checkerPanel">
         <div class="check-header">
           <div>
-            <h2>Availability checker</h2>
-            <p class="sub" style="margin-bottom:0;">Enter the movie, date, time, and theater.</p>
+            <h2>Check &amp; save a booking</h2>
+            <p class="sub" style="margin-bottom:0;">Enter the movie, date, time, and theater — then tap “Book this” on any free account.</p>
           </div>
           <div class="chip" id="activeDayChip">No active day</div>
         </div>
 
+        <div class="steps">
+          <span class="step"><b>1</b> Enter movie, date, time &amp; theater</span>
+          <span class="step"><b>2</b> See which accounts are free</span>
+          <span class="step"><b>3</b> Tap “Book this” to save it</span>
+        </div>
+
         <form id="checkForm">
-          <div class="grid-2">
-            <label>
-              Date
-              <input type="date" id="checkDate" required />
-            </label>
-            <label>
-              State or region
-              <input type="text" id="checkState" placeholder="Example: Virginia or VA" />
-            </label>
+          <div class="date-quick" id="checkDateQuick">
+            <span class="date-quick-cal">📅</span>
+            <span class="date-quick-label">Date</span>
+            <span class="date-quick-value" id="checkDateValue">Today</span>
+            <button type="button" class="date-quick-btn" id="checkDateChangeBtn">Change</button>
+            <input type="date" id="checkDate" required />
           </div>
 
           <label>
+            State or region
+            <div class="ac-field">
+              <input type="text" id="checkState" placeholder="Start typing a state…" autocomplete="off" />
+              <div class="ac-menu" id="checkStateMenu"></div>
+            </div>
+          </label>
+
+          <label>
             Theater
-            <input type="text" id="checkTheater" placeholder="Example: Regal Indian Lake" required />
+            <div class="ac-field">
+              <input type="text" id="checkTheater" placeholder="Example: Regal Indian Lake" autocomplete="off" required />
+              <div class="ac-menu" id="checkTheaterMenu"></div>
+            </div>
           </label>
 
           <div class="zone-pill" id="checkZoneHint">Timezone will be inferred from theater or state.</div>
@@ -1197,7 +1277,10 @@
             </label>
             <label>
               Movie name
-              <input type="text" id="checkMovie" placeholder="Example: ABC" required />
+              <div class="ac-field">
+                <input type="text" id="checkMovie" placeholder="Example: ABC" autocomplete="off" required />
+                <div class="ac-menu" id="checkMovieMenu"></div>
+              </div>
             </label>
           </div>
 
@@ -1215,6 +1298,40 @@
         <div class="account-grid" id="accountGrid"></div>
       </div>
     </section>
+
+    <div class="panel" id="ledgerPanel">
+      <h2 id="ledgerHeading" style="margin:0; font-family:Georgia,'Times New Roman',serif; font-size:1.18rem; letter-spacing:-0.02em;">Saved bookings</h2>
+      <p class="sub">Everything you’ve saved, grouped by day. Tap “Void” to remove one.</p>
+      <div id="bookingLedger" class="ledger" hidden></div>
+    </div>
+
+    <!-- Hidden: the old manual booking form. The checker's “Book this” button now
+         records bookings, so this stays out of sight but keeps the app's internals
+         (accounts, voice, timezone, cloud sync) fully working. -->
+    <div class="panel" id="bookingPanel" hidden>
+      <h2>Booking entry</h2>
+      <form id="bookingForm">
+        <input type="date" id="bookingDate" />
+        <input type="text" id="bookingState" />
+        <input type="text" id="bookingTheater" />
+        <div class="zone-pill" id="bookingZoneHint"></div>
+        <button type="button" class="time-trigger" id="bookingTimeTrigger" data-input="bookingTime">
+          <span class="time-trigger-text">--:-- --</span>
+          <span class="time-trigger-icon">🕐</span>
+        </button>
+        <input type="hidden" id="bookingTime" />
+        <span class="account-picker-count" id="bookingAccountCount">0 selected</span>
+        <button type="button" id="selectAllAccountsBtn">Select all</button>
+        <button type="button" id="clearAccountsBtn">Clear</button>
+        <div class="account-options" id="bookingAccountOptions"></div>
+        <input type="text" id="bookingMovie" />
+        <button type="submit">Save booking</button>
+        <button type="button" id="voiceFillBtn">Voice fill</button>
+        <div class="transcript-box" id="bookingTranscript">
+          <span id="bookingTranscriptText"></span>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1292,7 +1409,25 @@
       bookingTranscriptText: document.getElementById("bookingTranscriptText"),
       checkTranscript: document.getElementById("checkTranscript"),
       checkTranscriptText: document.getElementById("checkTranscriptText"),
+      checkDateQuick: document.getElementById("checkDateQuick"),
+      checkDateValue: document.getElementById("checkDateValue"),
+      checkDateChangeBtn: document.getElementById("checkDateChangeBtn"),
+      checkStateMenu: document.getElementById("checkStateMenu"),
+      checkTheaterMenu: document.getElementById("checkTheaterMenu"),
+      checkMovieMenu: document.getElementById("checkMovieMenu"),
     };
+
+    // Full US state / region list for the state dropdown.
+    const US_STATES = [
+      "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+      "Delaware","District of Columbia","Florida","Georgia","Hawaii","Idaho","Illinois",
+      "Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts",
+      "Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada",
+      "New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota",
+      "Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
+      "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+      "Wisconsin","Wyoming",
+    ];
 
     const speechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
     let activeRecognition = null;
@@ -1319,14 +1454,55 @@
         }
         return normalizeState(parsed);
       } catch {
-        return { days: {}, sessionDate: todayLocalDate() };
+        return { days: {}, sessionDate: todayLocalDate(), catalog: emptyCatalog() };
       }
     }
 
+    function emptyCatalog() {
+      return { theaters: [], movies: [] };
+    }
+
     function normalizeState(raw) {
-      if (!raw || typeof raw !== "object") return { days: {}, sessionDate: todayLocalDate() };
-      if (!raw.days || typeof raw.days !== "object") return { days: {}, sessionDate: todayLocalDate() };
-      return { days: raw.days, sessionDate: raw.sessionDate || todayLocalDate() };
+      if (!raw || typeof raw !== "object") return { days: {}, sessionDate: todayLocalDate(), catalog: emptyCatalog() };
+      if (!raw.days || typeof raw.days !== "object") return { days: {}, sessionDate: todayLocalDate(), catalog: emptyCatalog() };
+      const cat = raw.catalog && typeof raw.catalog === "object" ? raw.catalog : {};
+      return {
+        days: raw.days,
+        sessionDate: raw.sessionDate || todayLocalDate(),
+        catalog: {
+          theaters: Array.isArray(cat.theaters) ? cat.theaters : [],
+          movies: Array.isArray(cat.movies) ? cat.movies : [],
+        },
+      };
+    }
+
+    // Remember a theater/movie so it shows up in the dropdowns next time.
+    // Case-insensitive de-dupe; most-recent first.
+    function catalogAdd(listName, value) {
+      const v = (value || "").trim();
+      if (!v) return;
+      const list = state.catalog[listName];
+      const lower = v.toLowerCase();
+      const idx = list.findIndex((x) => x.toLowerCase() === lower);
+      if (idx !== -1) list.splice(idx, 1);
+      list.unshift(v);
+      if (list.length > 60) list.length = 60;
+    }
+
+    function rememberFromBooking(record) {
+      catalogAdd("theaters", record.theater);
+      catalogAdd("movies", record.movie);
+    }
+
+    // Pull any theaters/movies already sitting in saved days into the catalog
+    // (covers data saved before the catalog existed, and cloud-synced rows).
+    function seedCatalogFromDays() {
+      for (const dateStr of Object.keys(state.days)) {
+        for (const b of state.days[dateStr]) {
+          catalogAdd("theaters", b.theater);
+          catalogAdd("movies", b.movie);
+        }
+      }
     }
 
     function saveState() {
@@ -1390,7 +1566,9 @@
 
       state.days = cloudDays;
       purgePastDays(state.days);
+      seedCatalogFromDays();
       saveState();
+      refreshSuggestionMenus();
       const active = currentDayFromInputs();
       renderLedger(active);
       renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
@@ -1423,6 +1601,7 @@
         const today = todayLocalDate();
         els.bookingDate.value = today;
         els.checkDate.value = today;
+        updateDateQuick();
         renderLedger(today);
         syncActiveDay(today);
         refreshZoneHints();
@@ -2315,6 +2494,7 @@
     function addBooking(record) {
       const bookings = getDay(record.date).slice();
       bookings.push(record);
+      rememberFromBooking(record);
       setDay(record.date, bookings);
       cloudInsert(record);
     }
@@ -2785,7 +2965,7 @@
         els.checkTheater.value = "";
         els.checkMovie.value   = "";
         els.checkState.value   = "";
-        if (fields.date)    { els.checkDate.value    = fields.date;    els.bookingDate.value = fields.date; }
+        if (fields.date)    { els.checkDate.value    = fields.date;    els.bookingDate.value = fields.date; updateDateQuick(); }
         if (fields.time)      setTimeFieldValue(els.checkTime, fields.time);
         if (fields.theater)   els.checkTheater.value = fields.theater;
         if (fields.state)     els.checkState.value   = fields.state;
@@ -3051,15 +3231,178 @@
       input.addEventListener("change", refreshZoneHints);
     });
 
+    /* ===== Autocomplete dropdowns (type-to-filter, click to fill) ===== */
+    const autocompletes = [];
+
+    function attachAutocomplete(input, menu, getOptions, opts = {}) {
+      let items = [];
+      let active = -1;
+
+      function currentMatches() {
+        const q = input.value.trim().toLowerCase();
+        const seen = new Set();
+        const uniq = [];
+        for (const o of getOptions().filter(Boolean)) {
+          const k = o.toLowerCase();
+          if (!seen.has(k)) { seen.add(k); uniq.push(o); }
+        }
+        if (!q) return uniq.slice(0, 8);
+        const starts = [], contains = [];
+        for (const o of uniq) {
+          const l = o.toLowerCase();
+          if (l.startsWith(q)) starts.push(o);
+          else if (l.includes(q)) contains.push(o);
+        }
+        return [...starts, ...contains].slice(0, 8);
+      }
+
+      function render() {
+        items = currentMatches();
+        active = -1;
+        if (!items.length) {
+          if (opts.emptyText && document.activeElement === input) {
+            menu.innerHTML = `<div class="ac-empty">${escapeHtml(opts.emptyText)}</div>`;
+            menu.classList.add("open");
+          } else {
+            close();
+          }
+          return;
+        }
+        menu.innerHTML = items.map((o, i) =>
+          `<div class="ac-item" data-i="${i}">${escapeHtml(o)}${opts.tag ? `<span class="ac-tag">${escapeHtml(opts.tag)}</span>` : ""}</div>`
+        ).join("");
+        menu.classList.add("open");
+      }
+
+      function close() { menu.classList.remove("open"); active = -1; }
+
+      function paintActive() {
+        menu.querySelectorAll(".ac-item").forEach((el, i) => el.classList.toggle("active", i === active));
+        const el = menu.querySelector(`.ac-item[data-i="${active}"]`);
+        if (el) el.scrollIntoView({ block: "nearest" });
+      }
+
+      function pick(value) {
+        input.value = value;
+        close();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      input.addEventListener("focus", render);
+      input.addEventListener("input", render);
+      input.addEventListener("keydown", (e) => {
+        if (!menu.classList.contains("open") || !items.length) return;
+        if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(active + 1, items.length - 1); paintActive(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(active - 1, 0); paintActive(); }
+        else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(items[active]); }
+        else if (e.key === "Escape") { close(); }
+      });
+      // mousedown (not click) so the pick registers before the input blur closes the menu
+      menu.addEventListener("mousedown", (e) => {
+        const item = e.target.closest(".ac-item");
+        if (!item) return;
+        e.preventDefault();
+        pick(items[Number(item.dataset.i)]);
+      });
+      input.addEventListener("blur", () => setTimeout(close, 120));
+
+      autocompletes.push({ refresh: () => { if (menu.classList.contains("open")) render(); } });
+    }
+
+    function refreshSuggestionMenus() {
+      autocompletes.forEach((a) => a.refresh());
+    }
+
+    /* ===== Collapsible "Today" date chip ===== */
+    function fmtDateLabel(dateStr) {
+      if (!dateStr || dateStr === todayLocalDate()) return "Today";
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    }
+    function updateDateQuick() {
+      els.checkDateValue.textContent = fmtDateLabel(els.checkDate.value);
+    }
+    els.checkDateChangeBtn.addEventListener("click", () => {
+      els.checkDateQuick.classList.add("editing");
+      if (typeof els.checkDate.showPicker === "function") { try { els.checkDate.showPicker(); } catch (e) { els.checkDate.focus(); } }
+      else els.checkDate.focus();
+    });
+    els.checkDate.addEventListener("change", () => {
+      updateDateQuick();
+      els.checkDateQuick.classList.remove("editing");
+    });
+    els.checkDate.addEventListener("blur", () => els.checkDateQuick.classList.remove("editing"));
+
+    /* ===== Installable web app (Add to Home Screen) ===== */
+    function setupPWA() {
+      try {
+        function roundRectPath(ctx, x, y, w, h, r) {
+          if (typeof ctx.roundRect === "function") { ctx.roundRect(x, y, w, h, r); return; }
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+        }
+        function makeIcon(size) {
+          const c = document.createElement("canvas");
+          c.width = c.height = size;
+          const x = c.getContext("2d");
+          const g = x.createLinearGradient(0, 0, size, size);
+          g.addColorStop(0, "#8b5cf6"); g.addColorStop(0.5, "#d946ef"); g.addColorStop(1, "#ec4899");
+          x.fillStyle = g; x.beginPath(); roundRectPath(x, 0, 0, size, size, size * 0.22); x.fill();
+          x.font = `${Math.round(size * 0.5)}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`;
+          x.textAlign = "center"; x.textBaseline = "middle";
+          x.fillText("🎬", size / 2, size * 0.55);
+          return c.toDataURL("image/png");
+        }
+        const i180 = makeIcon(180), i192 = makeIcon(192), i512 = makeIcon(512);
+        const apple = document.querySelector('link[rel="apple-touch-icon"]');
+        if (apple) apple.href = i180;
+        const manifest = {
+          name: "Cinebuddy Booking Checker",
+          short_name: "Cinebuddy",
+          start_url: location.href,
+          scope: location.href.replace(/[^/]*$/, ""),
+          display: "standalone",
+          orientation: "portrait",
+          background_color: "#0c0718",
+          theme_color: "#0c0718",
+          icons: [
+            { src: i192, sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: i512, sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: i512, sizes: "512x512", type: "image/png", purpose: "maskable" },
+          ],
+        };
+        const url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" }));
+        let link = document.querySelector('link[rel="manifest"]');
+        if (!link) { link = document.createElement("link"); link.rel = "manifest"; document.head.appendChild(link); }
+        link.href = url;
+      } catch (e) { console.warn("PWA setup failed:", e); }
+    }
+
     populateAccounts();
     setupTimePickers();
     const today = todayLocalDate();
     els.bookingDate.value = today;
     els.checkDate.value = today;
+    seedCatalogFromDays();
+    saveState();
+    updateDateQuick();
+    attachAutocomplete(els.checkState, els.checkStateMenu, () => US_STATES, { tag: "state" });
+    attachAutocomplete(els.checkTheater, els.checkTheaterMenu, () => state.catalog.theaters, {
+      tag: "saved", emptyText: "No saved theaters yet — they appear here after your first booking.",
+    });
+    attachAutocomplete(els.checkMovie, els.checkMovieMenu, () => state.catalog.movies, {
+      tag: "saved", emptyText: "No saved movies yet — they appear here after your first booking.",
+    });
     renderLedger(today);
     refreshZoneHints();
     renderAvailability(today, "12:00", getCheckZoneInfo(), "");
     scheduleMidnightReset();
+    setupPWA();
     initCloudSync();
   </script>
 </body>
