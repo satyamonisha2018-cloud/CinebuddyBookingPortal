@@ -6,40 +6,40 @@
   <title>Cinebuddy Booking Checker</title>
 
   <!-- Installable web app (Add to Home Screen) -->
-  <meta name="theme-color" content="#0c0718" />
+  <meta name="theme-color" content="#ffffff" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Cinebuddy" />
   <link rel="apple-touch-icon" href="" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238b5cf6'/%3E%3Cstop offset='0.5' stop-color='%23d946ef'/%3E%3Cstop offset='1' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Ctext x='50' y='68' font-size='54' text-anchor='middle'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%234f46e5'/%3E%3Ctext x='50' y='68' font-size='54' text-anchor='middle'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
-      color-scheme: dark;
-      --bg-0:#0b141a;
-      --bg-1:#111b21;
-      --surface-2: #202c33;
-      --surface-3: #2a3942;
-      --text: #e9edef;
-      --muted: #8696a0;
-      --line: rgba(233,237,239,0.08);
-      --line-strong: rgba(233,237,239,0.16);
-      --accent: #00a884;
-      --accent-strong: #017561;
-      --accent-soft: rgba(0,168,132,0.16);
-      --accent-ink: #ffffff;
-      --pink: #00a884;
-      --pink-soft: rgba(0,168,132,0.14);
-      --cyan: #53bdeb;
-      --cyan-soft: rgba(83,189,235,0.14);
-      --danger: #f15c6d;
-      --success: #00a884;
-      --grad: #00a884;
-      --grad-cyan: #00a884;
-      --shadow: 0 1px 2px rgba(0,0,0,0.4);
-      --radius: 12px;
-      --radius-sm: 10px;
-      --radius-xs: 8px;
+      color-scheme: light;
+      --bg-0:#eceff4;
+      --bg-1:#ffffff;
+      --surface-2:#ffffff;
+      --surface-3:#eef1f6;
+      --text:#1f2733;
+      --muted:#64748b;
+      --line: rgba(15,23,42,0.10);
+      --line-strong: rgba(15,23,42,0.15);
+      --accent:#4f46e5;
+      --accent-strong:#4338ca;
+      --accent-soft: rgba(79,70,229,0.10);
+      --accent-ink:#ffffff;
+      --pink:#4f46e5;
+      --pink-soft: rgba(79,70,229,0.10);
+      --cyan:#0284c7;
+      --cyan-soft: rgba(2,132,199,0.10);
+      --danger:#dc2626;
+      --success:#16a34a;
+      --grad:#4f46e5;
+      --grad-cyan:#4f46e5;
+      --shadow: 0 1px 2px rgba(15,23,42,0.06), 0 6px 16px rgba(15,23,42,0.06);
+      --radius:14px;
+      --radius-sm:11px;
+      --radius-xs:8px;
     }
 
     @keyframes aurora {
@@ -119,12 +119,119 @@
     }
 
     .wrap {
-      width: min(760px, calc(100% - 32px));
+      width: min(680px, 100%);
       margin: 0 auto;
-      padding: 18px 0 28px;
+      padding: 10px 12px 8px;
       position: relative;
       z-index: 1;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
+
+    /* Compact top bar (brand + voice language) */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .brand-mini {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.12rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .brand-mini b { color: var(--accent); font-weight: 800; }
+    .brand-mini .brand-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: var(--accent-soft);
+      font-size: 0.95rem;
+    }
+
+    /* Segmented control: Book | Saved */
+    .seg {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 12px;
+      background: var(--surface-3);
+      border: 1px solid var(--line);
+    }
+    .seg-btn {
+      appearance: none;
+      border: 0;
+      border-radius: 9px;
+      padding: 9px 12px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--muted);
+      background: transparent;
+      box-shadow: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .seg-btn::after { display: none; }
+    .seg-btn:hover { transform: none; box-shadow: none; color: var(--text); }
+    .seg-btn.active {
+      background: var(--surface-2);
+      color: var(--accent);
+      box-shadow: 0 1px 3px rgba(15,23,42,0.12);
+    }
+    .seg-count {
+      min-width: 20px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+    .seg-btn.active .seg-count { background: var(--accent); color: #fff; }
+
+    /* Horizontal swipe pager: page 0 = form, page 1 = saved */
+    .pager {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+    .pager::-webkit-scrollbar { display: none; }
+    .page {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      scrollbar-width: thin;
+      padding-bottom: 10px;
+    }
+    .page::-webkit-scrollbar { width: 7px; }
+    .page::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; }
 
     .masthead {
       position: relative;
@@ -1201,38 +1308,12 @@
     }
 
     /* ============================================================
-       WhatsApp-style calm theme.
-       Flattens the earlier bright cinema look: solid dark surfaces,
-       one green accent, no gradients, no colored glows. Appended last
-       so these declarations win over the rules above.
+       Light theme — clean white cards on a soft grey page with a
+       single indigo accent. Flat surfaces, soft shadows, no glows.
+       Appended last so these declarations win over the rules above.
        ============================================================ */
-    html, body { background: var(--bg-0); }
+    html, body { background: var(--bg-0); color: var(--text); }
     body::before, body::after { display: none; }
-
-    .masthead {
-      background: var(--surface-2);
-      box-shadow: var(--shadow);
-      backdrop-filter: none;
-      border-color: var(--line);
-    }
-    .masthead::before { display: none; }
-
-    .brand-kicker { color: var(--accent); }
-    .brand-kicker::before { background: var(--accent); box-shadow: none; animation: none; }
-    .brand-name {
-      background: none;
-      -webkit-text-fill-color: var(--text);
-      color: var(--text);
-      animation: none;
-    }
-    .brand-pill { background: var(--surface-3); }
-    .brand-pill::before { background: var(--accent); box-shadow: none; }
-    .brand-pill:hover {
-      transform: none;
-      box-shadow: var(--shadow);
-      background: var(--surface-3);
-      border-color: var(--line-strong);
-    }
 
     .panel {
       background: var(--surface-2);
@@ -1241,135 +1322,145 @@
       border-color: var(--line);
     }
     .panel::before { display: none; }
-    .panel:hover {
-      transform: none;
-      box-shadow: var(--shadow);
-      border-color: var(--line-strong);
-    }
+    .panel:hover { transform: none; box-shadow: var(--shadow); border-color: var(--line); }
     .panel h2::before,
     #checkerPanel h2::before { background: var(--accent); box-shadow: none; }
 
-    input, select, textarea { background: var(--bg-0); border-color: var(--line-strong); }
+    input, select, textarea { background: var(--surface-2); border-color: var(--line-strong); color: var(--text); }
+    input::placeholder { color: #94a3b8; }
     input:focus, select:focus, textarea:focus {
       border-color: var(--accent);
-      background: var(--bg-0);
-      box-shadow: 0 0 0 2px var(--accent-soft);
+      background: var(--surface-2);
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
-    button { background: var(--accent); box-shadow: none; }
+    button { background: var(--accent); box-shadow: none; color: #fff; }
     button::after { display: none; }
     button:hover { transform: none; background: var(--accent-strong); box-shadow: none; }
     button:active { transform: none; }
     button.secondary { background: var(--surface-3); border: 1px solid var(--line-strong); color: var(--text); }
-    button.secondary:hover { background: var(--surface-3); border-color: var(--line-strong); box-shadow: none; filter: brightness(1.18); }
-    button.danger { background: var(--danger); box-shadow: none; }
-    button.danger:hover { background: #e04a5b; }
+    button.secondary:hover { background: #e5e9f0; border-color: var(--line-strong); box-shadow: none; filter: none; }
+    button.danger { background: var(--danger); box-shadow: none; color: #fff; }
+    button.danger:hover { background: #b91c1c; }
 
-    .lang-toggle button:hover { background: var(--surface-3); }
-    .lang-toggle button.active { background: var(--accent-soft); color: #7fe0cd; }
+    .lang-toggle { border-color: var(--line-strong); }
+    .lang-toggle button { background: var(--surface-2); color: var(--muted); border-right-color: var(--line); }
+    .lang-toggle button:hover { background: var(--surface-3); color: var(--text); }
+    .lang-toggle button.active { background: var(--accent-soft); color: var(--accent); }
 
-    .step b { background: var(--accent); }
-
+    .chip { background: var(--surface-3); color: var(--text); border-color: var(--line); }
     .chip:hover { transform: none; border-color: var(--line-strong); box-shadow: none; }
 
-    .date-quick-btn:hover { background: var(--surface-3); filter: brightness(1.18); }
-    .time-trigger:hover { border-color: var(--accent); background: var(--bg-0); }
+    .date-quick { background: var(--surface-3); }
+    .date-quick-btn { background: var(--surface-2); }
+    .date-quick-btn:hover { background: #e5e9f0; filter: none; }
+    .time-trigger { background: var(--surface-2); }
+    .time-trigger:hover { border-color: var(--accent); background: var(--surface-2); }
+    .time-trigger .time-trigger-text { color: var(--muted); }
+    .time-trigger.has-value .time-trigger-text { color: var(--text); }
 
+    .account-picker { background: var(--surface-3); }
+    .account-option { background: var(--surface-2); color: var(--text); }
     .account-option:hover { transform: none; box-shadow: none; background: var(--surface-3); border-color: var(--line-strong); }
-    .account-option:has(input:checked) { background: var(--accent-soft); box-shadow: none; border-color: rgba(0,168,132,0.5); }
+    .account-option:has(input:checked) { background: var(--accent-soft); box-shadow: none; border-color: rgba(79,70,229,0.5); }
+    .account-option input { background: #fff; border-color: var(--line-strong); }
     .account-option input:checked { background: var(--accent); box-shadow: none; }
     .account-option:has(input:checked) .acct-num { background: var(--surface-3); border-color: var(--line-strong); color: var(--accent); }
+    .acct-num { background: var(--surface-3); color: var(--muted); }
+    .account-picker-count { background: var(--accent-soft); border-color: rgba(79,70,229,0.3); color: var(--accent); }
 
-    .ac-menu { background: var(--surface-2); box-shadow: var(--shadow); border-color: var(--line-strong); }
+    .ac-menu { background: var(--surface-2); box-shadow: 0 12px 32px rgba(15,23,42,0.14); border-color: var(--line-strong); }
+    .ac-item { color: var(--text); }
     .ac-item:hover, .ac-item.active { background: var(--surface-3); }
+    .ac-item .ac-tag, .ac-empty { color: var(--muted); }
 
+    .zone-pill { background: var(--surface-3); color: var(--muted); border-color: var(--line); }
+    .result-banner { background: var(--surface-3); border-color: var(--line); border-left-color: var(--line-strong); }
     .result-banner.good {
-      border-color: rgba(0,168,132,0.35);
-      border-left-color: var(--accent);
-      background: rgba(0,168,132,0.10);
+      border-color: rgba(22,163,74,0.3);
+      border-left-color: var(--success);
+      background: rgba(22,163,74,0.08);
     }
     .result-banner.bad {
-      border-color: rgba(241,92,109,0.32);
+      border-color: rgba(220,38,38,0.3);
       border-left-color: var(--danger);
-      background: rgba(241,92,109,0.10);
+      background: rgba(220,38,38,0.07);
     }
 
-    .zone-pill.good { border-color: rgba(0,168,132,0.3); background: rgba(0,168,132,0.10); color: #8fe3d1; }
-    .zone-pill.good::before { background: var(--accent); box-shadow: none; }
-    .zone-pill.bad { border-color: rgba(241,92,109,0.3); background: rgba(241,92,109,0.10); color: #f6b6bf; }
+    .zone-pill.good { border-color: rgba(22,163,74,0.3); background: rgba(22,163,74,0.08); color: #15803d; }
+    .zone-pill.good::before { background: var(--success); box-shadow: none; }
+    .zone-pill.bad { border-color: rgba(220,38,38,0.3); background: rgba(220,38,38,0.07); color: #b91c1c; }
     .zone-pill.bad::before { background: var(--danger); box-shadow: none; }
 
     .account-card { background: var(--surface-2); }
     .account-card:hover { transform: none; box-shadow: var(--shadow); }
     .account-card::before { background: var(--line-strong); }
-    .account-card.available { background: var(--surface-2); border-color: rgba(0,168,132,0.35); }
+    .account-card .reason { color: var(--muted); }
+    .account-card.available { background: rgba(22,163,74,0.06); border-color: rgba(22,163,74,0.32); }
     .account-card.available:hover { box-shadow: var(--shadow); }
-    .account-card.available::before { background: var(--accent); box-shadow: none; }
-    .account-card.unavailable { background: var(--surface-2); border-color: rgba(241,92,109,0.3); }
+    .account-card.available::before { background: var(--success); box-shadow: none; }
+    .account-card.unavailable { background: rgba(220,38,38,0.05); border-color: rgba(220,38,38,0.28); }
     .account-card.unavailable:hover { box-shadow: var(--shadow); }
     .account-card.unavailable::before { background: var(--danger); box-shadow: none; }
 
+    .ledger-item { background: var(--surface-2); }
     .ledger-item:hover { transform: none; box-shadow: none; border-color: var(--line-strong); background: var(--surface-3); }
+    .ledger-item span { color: var(--muted); }
     .ledger-date-header { color: var(--muted); border-bottom-color: var(--line); }
     .ledger-date-header .date-badge { background: var(--surface-3); border-color: var(--line-strong); color: var(--text); }
-    .ledger-date-header .today-tag { color: var(--accent); background: var(--accent-soft); border-color: rgba(0,168,132,0.35); }
-    .ledger-date-header .count-badge { color: var(--accent); background: var(--accent-soft); border-color: rgba(0,168,132,0.35); }
+    .ledger-date-header .today-tag { color: var(--accent); background: var(--accent-soft); border-color: rgba(79,70,229,0.3); }
+    .ledger-date-header .count-badge { color: var(--accent); background: var(--accent-soft); border-color: rgba(79,70,229,0.3); }
     .ledger-date-header .count-badge::before { background: var(--accent); box-shadow: none; }
+    .empty { background: var(--surface-3); color: var(--muted); border-color: var(--line-strong); }
 
-    .transcript-box { border-color: rgba(0,168,132,0.3); background: rgba(0,168,132,0.08); color: #cdeee6; }
+    .void-btn {
+      color: var(--danger);
+      background: rgba(220,38,38,0.08);
+      border-color: rgba(220,38,38,0.3);
+    }
+    .void-btn:hover { background: rgba(220,38,38,0.14); border-color: rgba(220,38,38,0.5); box-shadow: none; }
+
+    .transcript-box { border-color: rgba(79,70,229,0.3); background: var(--accent-soft); color: var(--text); }
     .transcript-label { color: var(--accent); }
 
-    .account-picker-count { background: var(--accent-soft); border-color: rgba(0,168,132,0.35); color: #8fe3d1; }
+    .toast { background: #1f2733; border-color: rgba(15,23,42,0.2); box-shadow: 0 10px 28px rgba(15,23,42,0.22); color: #f4f6fb; }
 
-    .toast { background: var(--surface-3); border-color: var(--line-strong); box-shadow: var(--shadow); color: var(--text); }
-
-    .time-pop { background: var(--surface-2); box-shadow: var(--shadow); border-color: var(--line-strong); }
-    .tp-hh.active, .tp-mm.active { background: var(--accent-soft); border-color: rgba(0,168,132,0.5); color: #7fe0cd; }
+    .time-pop { background: var(--surface-2); box-shadow: 0 18px 44px rgba(15,23,42,0.18); border-color: var(--line-strong); }
+    .tp-hh, .tp-mm, .tp-ap { background: var(--surface-3); color: var(--text); border-color: var(--line); }
+    .tp-hh.active, .tp-mm.active { background: var(--accent-soft); border-color: rgba(79,70,229,0.5); color: var(--accent); }
     .tp-ap:hover { border-color: var(--accent); }
     .tp-ap.selected { background: var(--accent); border-color: transparent; color: #fff; }
+    .tp-dial { background: var(--surface-3); border-color: var(--line); }
+    .tp-num { color: var(--text); }
     .tp-hand { background: var(--accent); }
-    .tp-hand::before { background: var(--accent-soft); border-color: rgba(0,168,132,0.5); }
-    .tp-num:hover { background: var(--surface-3); }
+    .tp-hand::before { background: var(--accent-soft); border-color: rgba(79,70,229,0.5); }
+    .tp-num:hover { background: var(--surface-2); }
     .tp-num.selected { background: var(--accent); box-shadow: none; color: #fff; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="masthead">
-      <div class="brand-block">
-        <div class="brand-kicker">Regal Unlimited assistant</div>
-        <div class="brand-name">Cinebuddy Booking Checker</div>
-        <div class="brand-note">Check which of your accounts are free for a show, then save it with one tap. Timezone is detected for you.</div>
-      </div>
-      <div class="brand-pills">
-        <div class="brand-pill">Auto timezone</div>
-        <div class="brand-pill">Multi-account booking</div>
-        <div class="lang-toggle" title="Voice recognition language">
-          <button type="button" id="langEn" class="active">EN</button>
-          <button type="button" id="langEnIn">EN-IN</button>
-          <button type="button" id="langTe">TE</button>
-        </div>
-      </div>
-      <div id="httpsNotice" style="display:none; width:100%; margin-top:8px; padding:9px 12px; border-radius:10px; background:rgba(255,209,102,0.1); border:1px solid rgba(255,209,102,0.25); font-size:0.82rem; color:#ffd166;">
-        ⚠ You're on a local file — the browser will ask for mic permission every single time. Open via <strong><a href="https://satyamonisha2018-cloud.github.io/CinebuddyBookingPortal/" target="_blank" style="color:#ffd166;">GitHub Pages</a></strong> instead for persistent permission.
+    <header class="topbar">
+      <div class="brand-mini"><span class="brand-dot">🎬</span>&nbsp;<b>Cine</b>buddy</div>
+      <div class="lang-toggle" title="Voice recognition language">
+        <button type="button" id="langEn" class="active">EN</button>
+        <button type="button" id="langEnIn">EN-IN</button>
+        <button type="button" id="langTe">TE</button>
       </div>
     </header>
-    <section class="layout">
-      <div class="panel" id="checkerPanel">
-        <div class="check-header">
-          <div>
-            <h2>Check &amp; save a booking</h2>
-            <p class="sub" style="margin-bottom:0;">Enter the movie, date, time, and theater — then tap “Book this” on any free account.</p>
-          </div>
-          <div class="chip" id="activeDayChip">No active day</div>
-        </div>
 
-        <div class="steps">
-          <span class="step"><b>1</b> Enter movie, date, time &amp; theater</span>
-          <span class="step"><b>2</b> See which accounts are free</span>
-          <span class="step"><b>3</b> Tap “Book this” to save it</span>
-        </div>
+    <div id="httpsNotice" style="display:none; padding:9px 12px; border-radius:10px; background:#fff7ed; border:1px solid #fed7aa; font-size:0.82rem; color:#9a3412;">
+      ⚠ You're on a local file — the browser will ask for mic permission every time. Open via <strong><a href="https://satyamonisha2018-cloud.github.io/CinebuddyBookingPortal/" target="_blank" style="color:#9a3412;">GitHub Pages</a></strong> for persistent permission.
+    </div>
 
+    <div class="seg" id="seg">
+      <button type="button" class="seg-btn active" data-page="0">Book</button>
+      <button type="button" class="seg-btn" data-page="1">Saved <span class="seg-count" id="segCount">0</span></button>
+    </div>
+
+    <div class="pager" id="pager">
+      <section class="page">
+        <div class="panel" id="checkerPanel">
         <form id="checkForm">
           <div class="date-quick" id="checkDateQuick">
             <span class="date-quick-cal">📅</span>
@@ -1427,15 +1518,17 @@
           </div>
         </form>
 
-        <div id="checkSummary" class="result-banner">Enter a request and run the checker.</div>
+        <div id="checkSummary" class="result-banner">Fill in the details and tap Check accounts.</div>
         <div class="account-grid" id="accountGrid"></div>
-      </div>
-    </section>
+        </div>
+      </section>
 
-    <div class="panel" id="ledgerPanel">
-      <h2 id="ledgerHeading" style="margin:0; font-family:Georgia,'Times New Roman',serif; font-size:1.18rem; letter-spacing:-0.02em;">Saved bookings</h2>
-      <p class="sub">Everything you’ve saved, grouped by day. Tap “Void” to remove one.</p>
-      <div id="bookingLedger" class="ledger" hidden></div>
+      <section class="page">
+        <div class="panel" id="ledgerPanel">
+          <h2 id="ledgerHeading" style="margin:0 0 12px; font-family:Georgia,'Times New Roman',serif; font-size:1.18rem; letter-spacing:-0.02em;">Saved bookings</h2>
+          <div id="bookingLedger" class="ledger" hidden></div>
+        </div>
+      </section>
     </div>
 
     <!-- Hidden: the old manual booking form. The checker's “Book this” button now
@@ -2249,7 +2342,7 @@
     }
 
     function syncActiveDay(dateStr) {
-      els.activeDayChip.textContent = dateStr ? `Active day: ${dateStr}` : "No active day";
+      if (els.activeDayChip) els.activeDayChip.textContent = dateStr ? `Active day: ${dateStr}` : "No active day";
       if (els.bookingCount) els.bookingCount.textContent = String(getDay(dateStr).length);
     }
 
@@ -2322,6 +2415,7 @@
         .filter((d) => d >= today && state.days[d] && state.days[d].length)
         .sort();
 
+      updateSegCount(sortedDates.reduce((n, d) => n + state.days[d].length, 0));
       els.ledgerHeading.style.display = "";
       if (!sortedDates.length) {
         els.bookingLedger.hidden = false;
@@ -3484,7 +3578,7 @@
           c.width = c.height = size;
           const x = c.getContext("2d");
           const g = x.createLinearGradient(0, 0, size, size);
-          g.addColorStop(0, "#8b5cf6"); g.addColorStop(0.5, "#d946ef"); g.addColorStop(1, "#ec4899");
+          g.addColorStop(0, "#6366f1"); g.addColorStop(1, "#4338ca");
           x.fillStyle = g; x.beginPath(); roundRectPath(x, 0, 0, size, size, size * 0.22); x.fill();
           x.font = `${Math.round(size * 0.5)}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`;
           x.textAlign = "center"; x.textBaseline = "middle";
@@ -3501,8 +3595,8 @@
           scope: location.href.replace(/[^/]*$/, ""),
           display: "standalone",
           orientation: "portrait",
-          background_color: "#0c0718",
-          theme_color: "#0c0718",
+          background_color: "#eceff4",
+          theme_color: "#ffffff",
           icons: [
             { src: i192, sizes: "192x192", type: "image/png", purpose: "any" },
             { src: i512, sizes: "512x512", type: "image/png", purpose: "any" },
@@ -3515,6 +3609,32 @@
         link.href = url;
       } catch (e) { console.warn("PWA setup failed:", e); }
     }
+
+    /* ===== Swipeable pager: page 0 = booking form, page 1 = saved ===== */
+    const pagerEl = document.getElementById("pager");
+    const segBtns = Array.from(document.querySelectorAll(".seg-btn"));
+    const segCountEl = document.getElementById("segCount");
+
+    function updateSegCount(n) {
+      if (segCountEl) segCountEl.textContent = String(n);
+    }
+    function setActiveSeg(i) {
+      segBtns.forEach((b, idx) => b.classList.toggle("active", idx === i));
+    }
+    function goToPage(i) {
+      pagerEl.scrollTo({ left: pagerEl.clientWidth * i, behavior: "smooth" });
+      setActiveSeg(i);
+    }
+    segBtns.forEach((b, i) => b.addEventListener("click", () => goToPage(i)));
+    let segScrollRaf = null;
+    pagerEl.addEventListener("scroll", () => {
+      if (segScrollRaf) return;
+      segScrollRaf = requestAnimationFrame(() => {
+        segScrollRaf = null;
+        const w = pagerEl.clientWidth || 1;
+        setActiveSeg(Math.round(pagerEl.scrollLeft / w));
+      });
+    }, { passive: true });
 
     populateAccounts();
     setupTimePickers();
