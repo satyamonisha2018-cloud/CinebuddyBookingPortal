@@ -1655,6 +1655,66 @@
       "Wisconsin","Wyoming",
     ];
 
+    // Regal theatres by state — source: Fandango Regal directory (Jul 2026).
+    // Used to suggest theatre names once a state is entered on the checker.
+    const REGAL_THEATRES = {
+      "Alabama": ["Regal Trussville"],
+      "Alaska": ["Regal Dimond Center Cinemas","Regal Tikahtnu IMAX & RPX","Regal Goldstream & IMAX"],
+      "American Samoa": ["Regal Nu'uuli Place Twin"],
+      "Arizona": ["Regal Gilbert"],
+      "Arkansas": ["Regal McCain Mall"],
+      "California": ["Regal Edwards Alhambra Renaissance","Regal Edwards Aliso Viejo","Regal Arroyo Grande","Regal Auburn - California","Regal Edwards Bakersfield","Regal Edwards Brea East","Regal Edwards Camarillo Palace","Regal Edwards Canyon Country","Regal Carlsbad","Regal Edwards Cerritos","Regal Rancho Del Rey","Regal Edwards Corona Crossings","Regal Edwards Metro Pointe","Regal Davis Holiday","Regal Hacienda Crossings ScreenX, IMAX & RPX","Regal Edwards Eastvale Gateway","Regal Edwards Rancho San Diego","Regal Parkway Plaza","Regal El Dorado Hills & IMAX","Regal Escondido","Regal Edwards Fairfield & IMAX","Regal Edwards Fresno ScreenX, 4DX & IMAX","Regal Manchester - Fresno","Regal Marketplace @ El Paseo & RPX","Regal Garden Grove","Regal University Town Center","Regal Irvine Spectrum","Regal Edwards Market Place","Regal UA La Canada","Regal La Habra","Regal Edwards La Verne","Regal Edwards Long Beach","Regal LA Live","Regal Hollywood Merced","Regal Edwards Kaleidoscope","Regal Modesto","Regal Edwards Big Newport","Regal North Hollywood","Regal Jack London","Regal Oceanside","Regal Mission Marketplace","Regal Edwards Ontario Mountain Village","Regal Edwards Ontario Palace","Regal Paseo","Regal Rancho Mirage & IMAX","Regal Riverside Plaza","Regal Promenade","Regal UA Laguna Village","Regal Natomas Marketplace ScreenX, 4DX & RPX","Regal Delta Shores & IMAX","Regal San Bernardino & RPX","Regal Edwards Mira Mesa","Regal Stonestown Galleria ScreenX, 4DX, & RPX","Regal San Jacinto Metro","Regal Edwards San Marcos","Regal Edwards Valencia","Regal Edwards Santa Maria & RPX","Regal Sherman Oaks Galleria","Regal Simi Valley Civic Center","Regal Edwards South Gate","Regal Stockton City Center & IMAX","Regal Stockton Holiday Cinema","Regal Edwards Temecula","Regal Janss Marketplace","Regal Turlock","Regal Ukiah","Regal Visalia","Regal Edwards West Covina","Regal Yorba Linda"],
+      "Colorado": ["Regal SouthGlenn","Regal Interquest","Regal UA Colorado Center","Regal UA Denver Pavilions","Regal Canyon View","Regal UA Colorado Mills","Regal Village At The Peaks","Regal River Point"],
+      "Connecticut": ["Regal Waterford"],
+      "Delaware": ["Regal Peoples Plaza","Regal Brandywine Town Center"],
+      "District of Columbia": ["Regal Gallery Place & 4DX"],
+      "Florida": ["Regal Wekiva Riverwalk","Regal Oakmont","Regal Magnolia Place","Regal Dania Pointe","Regal Gulf Coast","Regal Belltower","Regal Royal Park","Regal Celebration Pointe","Regal Butler Town Center","Regal Citrus Cinemas","Regal Avenues","Regal Treasure Coast Mall","Regal Key West","Regal The Loop","Regal UA Cinema 90","Regal Eagle Ridge Mall","Regal Largo Mall","Regal Santa Rosa","Regal Southland Mall","Regal UA Falls","Regal Kendall Village","Regal Naples","Regal Hollywood - Ocala","Regal Waterford Lakes","Regal Pointe Orlando","Regal Oviedo Mall","Regal Regency","Regal Westfork","Regal Park Place","Regal Broward","Regal Town Center - Port Charlotte","Regal Pavilion","Regal Hollywood - Port Richey","Regal Royal Palm Beach","Regal Hollywood - Sarasota","Regal Sawgrass","Regal Winter Park Village"],
+      "Georgia": ["Regal Avalon","Regal Perimeter Pointe","Regal Atlantic Station","Regal Augusta Exchange","Regal Mall of Georgia","Regal Carrollton","Regal Hamilton Mill","Regal Dawson","Regal Arbor Place","Regal Medlock Crossing","Regal Hollywood - Gainesville","Regal Griffin","Regal McDonough","Regal Georgian","Regal Cherokee"],
+      "Guam": ["Regal Guam Megaplex"],
+      "Hawaii": ["Regal Prince Kuhio","Regal Dole Cannery","Regal Maui Mall","Regal Windward","Regal Kapolei Commons","Regal Keauhou","Regal Pearl Highlands"],
+      "Idaho": ["Regal Edwards Grand Teton","Regal Edwards Boise","Regal Riverstone","Regal Edwards Nampa Spectrum"],
+      "Illinois": ["Regal Bolingbrook","Regal Webster Place","Regal City North 4DX & IMAX","Regal Crystal Lake Showplace"],
+      "Indiana": ["Regal Shiloh Crossing","Regal Village Park","Regal Coldwater Crossing","Regal Greenwood & RPX","Regal UA Galaxy - Indianapolis","Regal Noblesville"],
+      "Kansas": ["Regal Southwind","Regal Warren East","Regal Warren West ScreenX & IMAX"],
+      "Kentucky": ["Regal Greenwood Mall","Regal Bowling Green","Regal Hamburg Pavilion","Regal Wilder"],
+      "Louisiana": ["Regal Louisiana Boardwalk","Regal Grand Esplanade","Regal UA Lee Hills"],
+      "Maine": ["Regal Augusta"],
+      "Maryland": ["Regal Westview & IMAX","Regal Waugh Chapel & IMAX","Regal Valley Mall & ScreenX","Regal Hunt Valley","Regal Hyattsville Royale","Regal Laurel Towne Centre","Regal Rockville Center","Regal Salisbury & RPX","Regal Majestic & IMAX"],
+      "Massachusetts": ["Regal Bellingham","Regal Independence Mall & RPX","Regal Solomon Pond","Regal Mashpee Commons","Regal MGM Springfield"],
+      "Michigan": ["Regal Lansing Mall & RPX"],
+      "Mississippi": ["Regal UA Westbrook"],
+      "Missouri": ["Regal Columbia","Regal Northstar","Regal Forum","Regal Hollywood - St. Joseph"],
+      "Montana": ["Regal Gallatin Valley"],
+      "Nevada": ["Regal Green Valley Ranch","Regal Sunset Station","Regal Red Rock","Regal Cinebarre Palace Station","Regal Summerlin Luxury","Regal Boulder Station","Regal Aliante"],
+      "New Hampshire": ["Regal Fox Run & RPX"],
+      "New Jersey": ["Regal Burlington","Regal Independence Plaza","Regal Manahawkin","Regal Hamilton Commons","Regal Moorestown Mall","Regal Commerce Center","Regal Secaucus ShowPlace 14","Regal UA Washington Township","Regal Hadley","Regal Cumberland Mall"],
+      "New Mexico": ["Regal UA Cottonwood","Regal Winrock","Regal Santa Fe Place"],
+      "New York": ["Regal Crossgates","Regal Colonie Center","Regal Binghamton","Regal Concourse","Regal UA Sheepshead Bay","Regal Elmwood Center","Regal Walden Galleria 4DX & RPX","Regal Clifton Park","Regal Deer Park","Regal UA East Hampton Cinema","Regal UA Farmingdale & IMAX","Regal Tangram","Regal UA Midway","Regal Arnot Mall","Regal Ithaca Mall","Regal Lynbrook","Regal UA Cortlandt Town Center","Regal Nanuet & RPX","Regal New Roc 4DX, IMAX & RPX","Regal Union Square ScreenX & 4DX","Regal Battery Park","Regal Essex Crossing & RPX","Regal Times Square","Regal Quaker Crossing","Regal Champlain Centre","Regal Galleria Mall","Regal UA Kaufman Astoria","Regal Atlas Park","Regal Aviation Mall","Regal East Greenbush","Regal Ronkonkoma","Regal Bricktown Charleston","Regal Destiny USA","Regal Eastview Mall","Regal Salmon Run","Regal Westbury IMAX & RPX","Regal Transit Center & IMAX"],
+      "North Carolina": ["Regal Biltmore Grande","Regal Boone","Regal Crossroads - Cary","Regal Stonecrest at Piper Glen","Regal Starlight - Charlotte","Regal White Oak","Regal Franklin Square","Regal Greensboro Grande","Regal Palladium","Regal Birkdale","Regal Brier Creek","Regal North Hills","Regal Mayfaire"],
+      "Ohio": ["Regal Fairfield Commons & RPX","Regal Cobblestone Square","Regal Hudson Cinema","Regal American Mall","Regal Deerfield Town Center & RPX","Regal Massillon","Regal Medina","Regal Eastwood","Regal Crocker Park & IMAX","Regal Willoughby Commons","Regal Cinema South"],
+      "Oklahoma": ["Regal Bartlesville Movies","Regal Warren Broken Arrow","Regal Midwest City","Regal Warren Moore 4DX & IMAX","Regal Spotlight"],
+      "Oregon": ["Regal Albany Cinemas","Regal Old Mill ScreenX & IMAX","Regal Valley River Center & IMAX","Regal Stark Street","Regal Movies On TV","Regal Evergreen Parkway & RPX","Regal Hilltop Cinema","Regal Pioneer Place","Regal Fox Tower","Regal Lloyd Center & IMAX","Regal Santiam","Regal Willamette Town Center","Regal Bridgeport Village ScreenX & IMAX"],
+      "Pennsylvania": ["Regal Plymouth Meeting","Regal Dickson City","Regal Downingtown","Regal Northampton","Regal Harrisburg","Regal Hazleton","Regal UA King Of Prussia","Regal Manor","Regal UA Oxford Valley","Regal UA Main Street","Regal Edgmont Square","Regal UA Grant Plaza","Regal Warrington Crossing","Regal West Manchester"],
+      "South Carolina": ["Regal Aiken Mall","Regal Starlight - Anderson","Regal Sandhill","Regal Columbiana Grande","Regal Swamp Fox","Regal Cherrydale","Regal Hollywood - Greenville","Regal Northlake Village","Regal Palmetto Grande","Regal Manchester - Rock Hill","Regal Simpsonville","Regal Spartan","Regal Azalea Square"],
+      "Tennessee": ["Regal Hamilton Place","Regal Clarksville","Regal Streets of Indian Lake","Regal Cinebarre West Town Mall","Regal Pinnacle","Regal Downtown West","Regal Riviera","Regal Providence","Regal Hollywood - Nashville","Regal Opry Mills","Regal Green Hills","Regal Tullahoma"],
+      "Texas": ["Regal Metropolitan","Regal Gateway 4DX & IMAX","Regal Westgate","Regal Star","Regal UA Galaxy Theatre & ScreenX - Dallas","Regal Heartland","Regal Fossil Creek","Regal Edwards Greenway Grand Palace ScreenX & RPX","Regal Houston Marq*E ScreenX, 4DX, IMAX & RPX","Regal Killeen","Regal Live Oak & RPX","Regal Cielo Vista & RPX","Regal Northwoods","Regal Huebner Oaks & RPX","Regal Alamo Quarry","Regal Benders Landing 4DX, ScreenX, RPX & VIP","Regal Lone Star IMAX & RPX"],
+      "Utah": ["Regal Crossroads - Taylorsville"],
+      "Virginia": ["Regal Kingstowne ScreenX & RPX","Regal Ballston Quarter","Regal Fox 4DX & IMAX","Regal Stonefield","Regal New River Valley","Regal Southpark Mall","Regal Culpeper","Regal Fairfax Towne Center","Regal Fredericksburg & IMAX","Regal Virginia Gateway & RPX","Regal Virginia Center","Regal Harrisonburg","Regal River Ridge","Regal Westchester Commons","Regal Commonwealth & IMAX","Regal West Tower Cinemas","Regal Short Pump","Regal Valley View Grande","Regal Springfield Town Center","Regal Dulles Town Center","Regal Harbour View Grande","Regal Columbus","Regal Strawbridge Marketplace","Regal New Town"],
+      "Washington": ["Regal Auburn - Washington","Regal Crossroads - Bellevue","Regal Barkley Village","Regal Tall Firs","Regal Everett","Regal Issaquah Highlands","Regal Three Rivers Mall & RPX","Regal Martin Village","Regal Lakewood & RPX","Regal Alderwood","Regal Marysville","Regal Cinebarre Mountlake","Regal Poulsbo","Regal South Hill Cinema","Regal Longston Place","Regal Bella Bottega","Regal The Landing","Regal Thornton Place","Regal Meridian","Regal Northtown Mall","Regal Spokane Valley","Regal Cinema 99","Regal City Center","Regal Cascade IMAX & RPX"],
+      "West Virginia": ["Regal Nitro","Regal Grand Central Mall"],
+      "Wyoming": ["Regal Fox - Laramie"],
+    };
+    const REGAL_ALL = new Set(Object.values(REGAL_THEATRES).flat());
+    // Regal theatres for a typed/selected state name (case-insensitive), else [].
+    function regalTheatersForState(stateValue) {
+      const q = (stateValue || "").trim().toLowerCase();
+      if (!q) return [];
+      for (const st of Object.keys(REGAL_THEATRES)) {
+        if (st.toLowerCase() === q) return REGAL_THEATRES[st];
+      }
+      return [];
+    }
+
     const speechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
     let activeRecognition = null;
     let voiceLang = "en-US";
@@ -3495,9 +3555,10 @@
           }
           return;
         }
-        menu.innerHTML = items.map((o, i) =>
-          `<div class="ac-item" data-i="${i}">${escapeHtml(o)}${opts.tag ? `<span class="ac-tag">${escapeHtml(opts.tag)}</span>` : ""}</div>`
-        ).join("");
+        menu.innerHTML = items.map((o, i) => {
+          const tag = opts.tagFor ? opts.tagFor(o) : opts.tag;
+          return `<div class="ac-item" data-i="${i}">${escapeHtml(o)}${tag ? `<span class="ac-tag">${escapeHtml(tag)}</span>` : ""}</div>`;
+        }).join("");
         menu.classList.add("open");
       }
 
@@ -3645,8 +3706,20 @@
     saveState();
     updateDateQuick();
     attachAutocomplete(els.checkState, els.checkStateMenu, () => US_STATES, { tag: "state" });
-    attachAutocomplete(els.checkTheater, els.checkTheaterMenu, () => state.catalog.theaters, {
-      tag: "saved", emptyText: "No saved theaters yet — they appear here after your first booking.",
+    attachAutocomplete(
+      els.checkTheater,
+      els.checkTheaterMenu,
+      () => [...regalTheatersForState(els.checkState.value), ...state.catalog.theaters],
+      {
+        tagFor: (name) => (REGAL_ALL.has(name) ? "regal" : "saved"),
+        emptyText: "Enter a state above to see its Regal theatres, or start typing.",
+      }
+    );
+    // When the state changes, refresh the theatre suggestions if that field is focused.
+    els.checkState.addEventListener("change", () => {
+      if (document.activeElement === els.checkTheater) {
+        els.checkTheater.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     });
     attachAutocomplete(els.checkMovie, els.checkMovieMenu, () => state.catalog.movies, {
       tag: "saved", emptyText: "No saved movies yet — they appear here after your first booking.",
