@@ -1442,11 +1442,6 @@
   <div class="wrap">
     <header class="topbar">
       <div class="brand-mini"><span class="brand-dot">🎬</span>&nbsp;<b>Cine</b>buddy</div>
-      <div class="lang-toggle" title="Voice recognition language">
-        <button type="button" id="langEn" class="active">EN</button>
-        <button type="button" id="langEnIn">EN-IN</button>
-        <button type="button" id="langTe">TE</button>
-      </div>
     </header>
 
     <div id="httpsNotice" style="display:none; padding:9px 12px; border-radius:10px; background:#fff7ed; border:1px solid #fed7aa; font-size:0.82rem; color:#9a3412;">
@@ -1510,7 +1505,6 @@
 
           <div class="actions">
             <button type="submit">Check accounts</button>
-            <button type="button" class="secondary" id="voiceCheckBtn">Voice fill</button>
           </div>
           <div class="transcript-box" id="checkTranscript">
             <div class="transcript-label">Heard</div>
@@ -1552,7 +1546,6 @@
         <div class="account-options" id="bookingAccountOptions"></div>
         <input type="text" id="bookingMovie" />
         <button type="submit">Save booking</button>
-        <button type="button" id="voiceFillBtn">Voice fill</button>
         <div class="transcript-box" id="bookingTranscript">
           <span id="bookingTranscriptText"></span>
         </div>
@@ -1623,15 +1616,10 @@
       accountCount: document.getElementById("accountCount"),
       bookingCount: document.getElementById("bookingCount"),
       activeDayChip: document.getElementById("activeDayChip"),
-      voiceFillBtn: document.getElementById("voiceFillBtn"),
       selectAllAccountsBtn: document.getElementById("selectAllAccountsBtn"),
       clearAccountsBtn: document.getElementById("clearAccountsBtn"),
-      voiceCheckBtn: document.getElementById("voiceCheckBtn"),
       ledgerHeading: document.getElementById("ledgerHeading"),
       httpsNotice: document.getElementById("httpsNotice"),
-      langEn: document.getElementById("langEn"),
-      langEnIn: document.getElementById("langEnIn"),
-      langTe: document.getElementById("langTe"),
       bookingTranscript: document.getElementById("bookingTranscript"),
       bookingTranscriptText: document.getElementById("bookingTranscriptText"),
       checkTranscript: document.getElementById("checkTranscript"),
@@ -3482,21 +3470,6 @@
         return;
       }
       renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
-    });
-
-    els.voiceFillBtn.addEventListener("click", () => startVoiceFill("booking"));
-    els.voiceCheckBtn.addEventListener("click", () => startVoiceFill("checker"));
-
-    [
-      { btn: els.langEn,   lang: "en-US" },
-      { btn: els.langEnIn, lang: "en-IN" },
-      { btn: els.langTe,   lang: "te-IN" },
-    ].forEach(({ btn, lang }) => {
-      btn.addEventListener("click", () => {
-        voiceLang = lang;
-        [els.langEn, els.langEnIn, els.langTe].forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-      });
     });
 
     els.selectAllAccountsBtn.addEventListener("click", () => {
