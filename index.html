@@ -1714,6 +1714,24 @@
       }
       return [];
     }
+    // All Regal theatres (flat, de-duped) + a reverse map name -> state, so a theatre
+    // entered without a state can still resolve which state it is in.
+    const ALL_REGAL = [...new Set(Object.values(REGAL_THEATRES).flat())].sort((a, b) => a.localeCompare(b));
+    const REGAL_STATE_BY_THEATRE = {};
+    for (const [st, list] of Object.entries(REGAL_THEATRES)) {
+      for (const name of list) {
+        const k = name.toLowerCase();
+        if (!(k in REGAL_STATE_BY_THEATRE)) REGAL_STATE_BY_THEATRE[k] = st;
+      }
+    }
+    // State for a theatre value: exact name match, else a unique substring match, else "".
+    function stateForRegalTheatre(value) {
+      const q = (value || "").trim().toLowerCase();
+      if (!q) return "";
+      if (REGAL_STATE_BY_THEATRE[q]) return REGAL_STATE_BY_THEATRE[q];
+      const hits = ALL_REGAL.filter(n => n.toLowerCase().includes(q));
+      return hits.length === 1 ? REGAL_STATE_BY_THEATRE[hits[0].toLowerCase()] : "";
+    }
 
     const speechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
     let activeRecognition = null;
@@ -3535,14 +3553,15 @@
           const k = o.toLowerCase();
           if (!seen.has(k)) { seen.add(k); uniq.push(o); }
         }
-        if (!q) return uniq.slice(0, 8);
+        const limit = opts.limit || 8;
+        if (!q) return uniq.slice(0, limit);
         const starts = [], contains = [];
         for (const o of uniq) {
           const l = o.toLowerCase();
           if (l.startsWith(q)) starts.push(o);
           else if (l.includes(q)) contains.push(o);
         }
-        return [...starts, ...contains].slice(0, 8);
+        return [...starts, ...contains].slice(0, limit);
       }
 
       function render() {
@@ -3711,20 +3730,28 @@
     seedCatalogFromDays();
     saveState();
     updateDateQuick();
-    attachAutocomplete(els.checkState, els.checkStateMenu, () => US_STATES, { tag: "state" });
+    attachAutocomplete(els.checkState, els.checkStateMenu, () => US_STATES, { tag: "state", limit: US_STATES.length });
     attachAutocomplete(
       els.checkTheater,
       els.checkTheaterMenu,
-      () => regalTheatersForState(els.checkState.value),
+      () => {
+        // With a state chosen, show that state's theatres; otherwise search all Regal theatres.
+        const forState = regalTheatersForState(els.checkState.value);
+        return forState.length ? forState : ALL_REGAL;
+      },
       {
         tag: "regal",
-        emptyText: "Select a state above to see its Regal theatres.",
+        limit: 80,
+        emptyText: "No matching Regal theatre — you can still type it in.",
       }
     );
-    // When the state changes, refresh the theatre suggestions if that field is focused.
-    els.checkState.addEventListener("change", () => {
-      if (document.activeElement === els.checkTheater) {
-        els.checkTheater.dispatchEvent(new Event("input", { bubbles: true }));
+    // Auto-fill the state from the chosen/typed theatre when it maps to one Regal location.
+    els.checkTheater.addEventListener("change", () => {
+      const st = stateForRegalTheatre(els.checkTheater.value);
+      if (st && st.toLowerCase() !== els.checkState.value.trim().toLowerCase()) {
+        els.checkState.value = st;
+        // 'change' only (not 'input') so the state field's own dropdown doesn't pop open.
+        els.checkState.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
     attachAutocomplete(els.checkMovie, els.checkMovieMenu, () => state.catalog.movies, {
