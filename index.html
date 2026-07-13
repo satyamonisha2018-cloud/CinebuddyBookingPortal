@@ -1704,7 +1704,6 @@
       "West Virginia": ["Regal Nitro","Regal Grand Central Mall"],
       "Wyoming": ["Regal Fox - Laramie"],
     };
-    const REGAL_ALL = new Set(Object.values(REGAL_THEATRES).flat());
     // Regal theatres for a typed/selected state name (case-insensitive), else [].
     function regalTheatersForState(stateValue) {
       const q = (stateValue || "").trim().toLowerCase();
@@ -3709,10 +3708,10 @@
     attachAutocomplete(
       els.checkTheater,
       els.checkTheaterMenu,
-      () => [...regalTheatersForState(els.checkState.value), ...state.catalog.theaters],
+      () => regalTheatersForState(els.checkState.value),
       {
-        tagFor: (name) => (REGAL_ALL.has(name) ? "regal" : "saved"),
-        emptyText: "Enter a state above to see its Regal theatres, or start typing.",
+        tag: "regal",
+        emptyText: "Select a state above to see its Regal theatres.",
       }
     );
     // When the state changes, refresh the theatre suggestions if that field is focused.
