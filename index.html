@@ -3523,6 +3523,7 @@
     function attachAutocomplete(input, menu, getOptions, opts = {}) {
       let items = [];
       let active = -1;
+      let suppressRender = false; // set while filling a picked value, so the menu doesn't re-open
 
       function currentMatches() {
         const q = input.value.trim().toLowerCase();
@@ -3543,6 +3544,7 @@
       }
 
       function render() {
+        if (suppressRender) return;
         items = currentMatches();
         active = -1;
         if (!items.length) {
@@ -3571,9 +3573,12 @@
 
       function pick(value) {
         input.value = value;
-        close();
+        // Notify listeners (zone hints, theatre refresh, …) but keep the menu from re-opening.
+        suppressRender = true;
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.dispatchEvent(new Event("change", { bubbles: true }));
+        suppressRender = false;
+        close();
       }
 
       input.addEventListener("focus", render);
