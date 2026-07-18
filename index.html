@@ -1236,6 +1236,51 @@
       box-shadow: 0 6px 16px rgba(251,113,133,0.25);
     }
 
+    .ledger-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+    .edit-btn {
+      appearance: none;
+      border: 1px solid rgba(129,140,248,0.4);
+      border-radius: 8px;
+      padding: 6px 11px;
+      cursor: pointer;
+      color: #a5b4fc;
+      font-weight: 700;
+      font-size: 0.78rem;
+      background: rgba(129,140,248,0.12);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+    .edit-btn:hover {
+      background: rgba(129,140,248,0.22);
+      border-color: rgba(129,140,248,0.6);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(129,140,248,0.25);
+    }
+
+    /* Inline edit form shown in place of a saved booking row */
+    .ledger-item.editing { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+    .ledger-item.editing:hover { transform: none; box-shadow: none; border-color: var(--line-strong); background: var(--surface-2); }
+    .edit-row { display: flex; flex-direction: column; gap: 3px; }
+    .edit-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+    .edit-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line-strong);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .edit-save-btn {
+      appearance: none; border: 0; border-radius: 8px; padding: 8px 16px; cursor: pointer;
+      color: #fff; font-weight: 700; font-size: 0.82rem; background: var(--accent);
+    }
+    .edit-cancel-btn {
+      appearance: none; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 14px; cursor: pointer;
+      color: var(--muted); font-weight: 700; font-size: 0.82rem; background: transparent;
+    }
+
     .ledger-item strong {
       display: block;
       margin-bottom: 3px;
@@ -2475,6 +2520,30 @@
       return { available: true, reason: "Meets both rules.", conflict: null, type: "none" };
     }
 
+    let editingBookingId = null;
+
+    // Inline edit form shown in place of a saved booking row.
+    function ledgerEditForm(booking) {
+      const today = todayLocalDate();
+      const accts = ACCOUNTS.includes(booking.account) ? ACCOUNTS : [booking.account, ...ACCOUNTS];
+      const opts = accts.map((a) =>
+        `<option value="${escapeHtml(a)}"${a === booking.account ? " selected" : ""}>${escapeHtml(a)}</option>`).join("");
+      return `
+        <div class="ledger-item editing" data-id="${escapeHtml(booking.id)}">
+          <label class="edit-row"><span class="edit-label">Movie</span><input class="edit-input" data-k="movie" value="${escapeHtml(booking.movie)}"></label>
+          <label class="edit-row"><span class="edit-label">Account</span><select class="edit-input" data-k="account">${opts}</select></label>
+          <label class="edit-row"><span class="edit-label">Theatre</span><input class="edit-input" data-k="theater" value="${escapeHtml(booking.theater)}"></label>
+          <label class="edit-row"><span class="edit-label">State / region</span><input class="edit-input" data-k="stateOrRegion" value="${escapeHtml(booking.stateOrRegion || "")}"></label>
+          <label class="edit-row"><span class="edit-label">Date</span><input class="edit-input" type="date" min="${today}" data-k="date" value="${escapeHtml(booking.date)}"></label>
+          <label class="edit-row"><span class="edit-label">Time</span><input class="edit-input" type="time" data-k="time" value="${escapeHtml(booking.time)}"></label>
+          <div class="ledger-actions">
+            <button type="button" class="edit-save-btn" data-date="${escapeHtml(booking.date)}" data-id="${escapeHtml(booking.id)}">Save</button>
+            <button type="button" class="edit-cancel-btn" data-date="${escapeHtml(booking.date)}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+
     function renderLedger(activeDateStr) {
       syncActiveDay(activeDateStr);
       const today = todayLocalDate();
@@ -2504,7 +2573,7 @@
               ${isActive && !isToday ? '<span class="today-tag">selected</span>' : ""}
               <span class="count-badge">${bookings.length} ${bookings.length === 1 ? "ticket" : "tickets"}</span>
             </div>
-            ${bookings.map((booking) => `
+            ${bookings.map((booking) => booking.id === editingBookingId ? ledgerEditForm(booking) : `
               <div class="ledger-item">
                 <div>
                   <strong>${escapeHtml(booking.movie)}</strong>
@@ -2518,7 +2587,10 @@
                   <strong>Saved</strong>
                   <span>${escapeHtml(formatInZone(new Date(booking.timestampUtc), booking.timeZone))}</span>
                 </div>
-                <button type="button" class="void-btn" data-date="${escapeHtml(booking.date)}" data-id="${escapeHtml(booking.id)}">Void</button>
+                <div class="ledger-actions">
+                  <button type="button" class="edit-btn" data-date="${escapeHtml(booking.date)}" data-id="${escapeHtml(booking.id)}">Edit</button>
+                  <button type="button" class="void-btn" data-date="${escapeHtml(booking.date)}" data-id="${escapeHtml(booking.id)}">Void</button>
+                </div>
               </div>
             `).join("")}
           </div>
@@ -2800,6 +2872,53 @@
       renderLedger(dateStr);
       const checkDate = els.checkDate.value;
       if (checkDate) renderAvailability(checkDate, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+    }
+
+    // Save an in-place edit of a saved booking: recompute zone/timestamp,
+    // move it between day buckets if the date changed, and re-sync to cloud.
+    function saveEditBooking(oldDate, id, itemEl) {
+      if (!itemEl) return;
+      const val = (k) => { const el = itemEl.querySelector(`[data-k="${k}"]`); return el ? el.value : ""; };
+      const movie = val("movie").trim();
+      const account = val("account");
+      const theater = val("theater").trim();
+      const stateOrRegion = val("stateOrRegion").trim();
+      const date = val("date");
+      const time = val("time");
+      if (!movie || !account || !theater || !date || !time) {
+        alert("Please fill in movie, account, theatre, date and time.");
+        return;
+      }
+      const existing = getDay(oldDate).find((b) => b.id === id);
+      if (!existing) { editingBookingId = null; renderLedger(oldDate); return; }
+
+      const zoneInfo = detectTimeZone(theater, stateOrRegion);
+      const zone = zoneInfo ? zoneInfo.zone : existing.timeZone;
+      const updated = {
+        ...existing,
+        movie, account, theater, stateOrRegion, date, time,
+        timeZone: zone,
+        timeZoneLabel: timezoneLabel[zone],
+        timeZoneSource: zoneInfo ? zoneInfo.source : existing.timeZoneSource,
+        timestampUtc: zonedToUtcTimestamp(date, time, zone),
+      };
+
+      if (date === oldDate) {
+        setDay(oldDate, getDay(oldDate).map((b) => (b.id === id ? updated : b)));
+      } else {
+        setDay(oldDate, getDay(oldDate).filter((b) => b.id !== id));
+        setDay(date, [...getDay(date), updated]);
+      }
+      rememberFromBooking(updated);
+      cloudDelete(id);   // replace the cloud row (same id) with the updated data
+      cloudInsert(updated);
+
+      editingBookingId = null;
+      renderLedger(date);
+      refreshSuggestionMenus();
+      const checkDate = els.checkDate.value;
+      if (checkDate) renderAvailability(checkDate, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+      showToast("✓ Booking updated");
     }
 
     function fillToday() {
@@ -3483,10 +3602,14 @@
     els.bookingAccountOptions.addEventListener("change", updateSelectedAccountCount);
 
     els.bookingLedger.addEventListener("click", (event) => {
-      const btn = event.target.closest(".void-btn");
-      if (!btn) return;
-      const { date, id } = btn.dataset;
-      if (date && id) deleteBooking(date, id);
+      const editBtn = event.target.closest(".edit-btn");
+      if (editBtn) { editingBookingId = editBtn.dataset.id; renderLedger(editBtn.dataset.date); return; }
+      const cancelBtn = event.target.closest(".edit-cancel-btn");
+      if (cancelBtn) { editingBookingId = null; renderLedger(cancelBtn.dataset.date); return; }
+      const saveBtn = event.target.closest(".edit-save-btn");
+      if (saveBtn) { saveEditBooking(saveBtn.dataset.date, saveBtn.dataset.id, saveBtn.closest(".ledger-item")); return; }
+      const voidBtn = event.target.closest(".void-btn");
+      if (voidBtn && voidBtn.dataset.date && voidBtn.dataset.id) deleteBooking(voidBtn.dataset.date, voidBtn.dataset.id);
     });
 
     els.accountGrid.addEventListener("click", (event) => {
