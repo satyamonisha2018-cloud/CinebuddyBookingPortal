@@ -1292,6 +1292,37 @@
       font-size: 0.82rem;
     }
 
+    /* Finished shows (showtime already passed) get struck through and dimmed */
+    .ledger-item.finished { opacity: 0.6; }
+    .ledger-item.finished:hover { transform: none; box-shadow: none; opacity: 0.72; }
+    .ledger-item.finished strong:not(.status-badge),
+    .ledger-item.finished span:not(.status-badge) {
+      text-decoration: line-through;
+      text-decoration-color: rgba(148,163,184,0.75);
+      text-decoration-thickness: 1.5px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      margin-bottom: 3px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .status-badge.pending {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid rgba(129,140,248,0.32);
+    }
+    .status-badge.done {
+      color: #86efac;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.32);
+    }
+
     .muted { color: var(--muted); }
     .small { font-size: 0.88rem; }
     .footerbar { display: none; }
@@ -2575,8 +2606,11 @@
               ${isActive && !isToday ? '<span class="today-tag">selected</span>' : ""}
               <span class="count-badge">${bookings.length} ${bookings.length === 1 ? "ticket" : "tickets"}</span>
             </div>
-            ${bookings.map((booking) => booking.id === editingBookingId ? ledgerEditForm(booking) : `
-              <div class="ledger-item">
+            ${bookings.map((booking) => {
+              if (booking.id === editingBookingId) return ledgerEditForm(booking);
+              const finished = Date.now() >= booking.timestampUtc;
+              return `
+              <div class="ledger-item${finished ? " finished" : ""}" data-ts="${booking.timestampUtc}">
                 <div>
                   <strong>${escapeHtml(booking.movie)}</strong>
                   <span>${escapeHtml(booking.account)} · ${escapeHtml(booking.theater)}</span>
@@ -2586,7 +2620,7 @@
                   <span>${escapeHtml(booking.date)}</span>
                 </div>
                 <div>
-                  <strong>Saved</strong>
+                  <strong class="status-badge ${finished ? "done" : "pending"}">${finished ? "✓ Finished" : "Upcoming"}</strong>
                   <span>${escapeHtml(formatInZone(new Date(booking.timestampUtc), booking.timeZone))}</span>
                 </div>
                 <div class="ledger-actions">
@@ -2594,10 +2628,28 @@
                   <button type="button" class="void-btn" data-date="${escapeHtml(booking.date)}" data-id="${escapeHtml(booking.id)}">Void</button>
                 </div>
               </div>
-            `).join("")}
+            `;
+            }).join("")}
           </div>
         `;
       }).join("");
+    }
+
+    // Flips ledger rows to "finished" (struck through) as their showtimes pass.
+    // Runs on a timer and mutates existing rows in place instead of re-rendering,
+    // so an open inline edit form is never disturbed (edit rows carry no data-ts).
+    function refreshFinishedStates() {
+      const now = Date.now();
+      document.querySelectorAll(".ledger-item[data-ts]").forEach((item) => {
+        const finished = now >= Number(item.dataset.ts);
+        item.classList.toggle("finished", finished);
+        const badge = item.querySelector(".status-badge");
+        if (badge) {
+          badge.textContent = finished ? "✓ Finished" : "Upcoming";
+          badge.classList.toggle("done", finished);
+          badge.classList.toggle("pending", !finished);
+        }
+      });
     }
 
     function escapeHtml(value) {
@@ -3856,6 +3908,7 @@
       tag: "saved", emptyText: "No saved movies yet — they appear here after your first booking.",
     });
     renderLedger(today);
+    setInterval(refreshFinishedStates, 30000);
     refreshZoneHints();
     renderAvailability(today, "12:00", getCheckZoneInfo(), "");
     scheduleMidnightReset();
