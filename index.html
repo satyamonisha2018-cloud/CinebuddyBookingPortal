@@ -2446,6 +2446,16 @@
       }).format(date);
     }
 
+    // Just the wall clock, no date — for talking about a show inside today.
+    function clockInZone(date, timeZone) {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(date);
+    }
+
     function zonedToUtcTimestamp(dateStr, timeStr, timeZone) {
       const target = parseLocalDateTime(dateStr, timeStr);
       let utcMs = Date.UTC(target.year, target.month - 1, target.day, target.hour, target.minute, 0, 0);
@@ -2545,22 +2555,57 @@
       updateSelectedAccountCount();
     }
 
-    // Booking a movie the account already has today is no longer a dead end:
-    // the kiosk will still sell that seat, provided the 90-minute gap holds.
-    // Online stays one-per-movie-per-day, so those accounts come back tagged
-    // "kiosk" rather than available outright.
-    function sameMovieToday(existing, requestedMovie) {
-      const normalizedMovie = normalizeMovie(requestedMovie);
-      return existing.find((entry) => normalizeMovie(entry.movie) === normalizedMovie) || null;
+    // A show is treated as running 90 minutes from its start time, so a
+    // ticket booked at 6:00 frees the account at 7:30.
+    const SHOW_RUNTIME_MS = 90 * 60 * 1000;
+    const MIN_GAP_MS = 90 * 60 * 1000;
+
+    // A show is over 90 minutes after it starts — never at its start time.
+    // Both the booking rules and the ledger's Finished badge read this.
+    function showEndUtc(startUtc) {
+      return startUtc + SHOW_RUNTIME_MS;
     }
 
+    function sameMovieToday(existing, requestedMovie) {
+      const normalizedMovie = normalizeMovie(requestedMovie);
+      return existing.filter((entry) => normalizeMovie(entry.movie) === normalizedMovie);
+    }
+
+    // Two rules, in the order they bite:
+    //
+    //   1. An existing ticket for this movie holds the account until that show
+    //      has finished — 90 minutes after it starts. Nothing before that point
+    //      clears, kiosk or not, and that includes earlier showings of the same
+    //      movie: the seat is only free once the booked show is over.
+    //   2. The 90-minute gap between any two bookings on the account that day.
+    //
+    // A same-movie request that clears both is sellable at the kiosk only,
+    // because the online store still allows one showing per movie per day.
     function evaluateAccount(account, dateStr, movie, timeStr, zone) {
       const bookings = getDay(dateStr).filter((entry) => entry.account === account);
       const requestedUtc = zonedToUtcTimestamp(dateStr, timeStr, zone);
+      const repeats = sameMovieToday(bookings, movie);
 
-      // The 90-minute gap is the hard rule — it blocks the kiosk just as it
-      // blocks online, so it is checked before the same-movie downgrade.
-      const conflict = bookings.find((entry) => Math.abs(entry.timestampUtc - requestedUtc) < 90 * 60 * 1000);
+      // 1. Same movie: wait for the booked show to end. Latest one wins, so the
+      //    message names the show the user actually has to sit through.
+      const unfinished = repeats
+        .filter((entry) => requestedUtc < showEndUtc(entry.timestampUtc))
+        .sort((a, b) => b.timestampUtc - a.timestampUtc)[0];
+      if (unfinished) {
+        const zoneName = timezoneLabel[unfinished.timeZone];
+        const startsAt = clockInZone(new Date(unfinished.timestampUtc), unfinished.timeZone);
+        const endsAt = clockInZone(new Date(showEndUtc(unfinished.timestampUtc)), unfinished.timeZone);
+        return {
+          available: false,
+          kiosk: false,
+          reason: `Already booked this movie today at ${startsAt} ${zoneName} — that show is not over until about ${endsAt} ${zoneName}, so nothing before then, kiosk included.`,
+          conflict: unfinished,
+          type: "movie",
+        };
+      }
+
+      // 2. 90-minute gap against everything else the account holds that day.
+      const conflict = bookings.find((entry) => Math.abs(entry.timestampUtc - requestedUtc) < MIN_GAP_MS);
       if (conflict) {
         const deltaMinutes = Math.round(Math.abs(conflict.timestampUtc - requestedUtc) / 60000);
         return {
@@ -2572,14 +2617,17 @@
         };
       }
 
-      // Same movie already on this account today, but the gap is clear — kiosk only.
-      const repeat = sameMovieToday(bookings, movie);
-      if (repeat) {
+      // Same movie, but the booked show has already finished — kiosk only.
+      if (repeats.length) {
+        const previous = repeats.reduce((a, b) => (a.timestampUtc > b.timestampUtc ? a : b));
+        const zoneName = timezoneLabel[previous.timeZone];
+        const startedAt = clockInZone(new Date(previous.timestampUtc), previous.timeZone);
+        const endedAt = clockInZone(new Date(showEndUtc(previous.timestampUtc)), previous.timeZone);
         return {
           available: true,
           kiosk: true,
-          reason: `Kiosk only — already booked this movie today at ${repeat.time} ${timezoneLabel[repeat.timeZone]}. The 90-minute gap is clear.`,
-          conflict: repeat,
+          reason: `Kiosk only — this movie's ${startedAt} ${zoneName} show is over by about ${endedAt} ${zoneName}, so the kiosk can sell it again.`,
+          conflict: previous,
           type: "kiosk",
         };
       }
@@ -2642,7 +2690,7 @@
             </div>
             ${bookings.map((booking) => {
               if (booking.id === editingBookingId) return ledgerEditForm(booking);
-              const finished = Date.now() >= booking.timestampUtc;
+              const finished = Date.now() >= showEndUtc(booking.timestampUtc);
               return `
               <div class="ledger-item${finished ? " finished" : ""}" data-ts="${booking.timestampUtc}">
                 <div>
@@ -2669,13 +2717,14 @@
       }).join("");
     }
 
-    // Flips ledger rows to "finished" (struck through) as their showtimes pass.
+    // Flips ledger rows to "finished" (struck through) 90 minutes after each
+    // showtime, when the show is actually over — not the moment it starts.
     // Runs on a timer and mutates existing rows in place instead of re-rendering,
     // so an open inline edit form is never disturbed (edit rows carry no data-ts).
     function refreshFinishedStates() {
       const now = Date.now();
       document.querySelectorAll(".ledger-item[data-ts]").forEach((item) => {
-        const finished = now >= Number(item.dataset.ts);
+        const finished = now >= showEndUtc(Number(item.dataset.ts));
         item.classList.toggle("finished", finished);
         const badge = item.querySelector(".status-badge");
         if (badge) {
@@ -2722,7 +2771,7 @@
       els.checkSummary.className = `result-banner ${available.length ? "good" : "bad"}`;
       els.checkSummary.innerHTML = available.length
         ? `<strong>${available.length} ${available.length === 1 ? "account is" : "accounts are"} available.</strong> ${onlineReady} online${kioskOnly.length ? `, ${kioskOnly.length} kiosk only` : ""} · ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`
-        : `<strong>No accounts are available.</strong> Every account is inside the 90-minute gap for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
+        : `<strong>No accounts are available.</strong> Every account is either still sitting through this movie or inside the 90-minute gap for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
 
       // "Book this" is only offered when there's a real movie + date + time to save.
       const movieClean = (movie || "").trim();
