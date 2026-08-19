@@ -1322,6 +1322,11 @@
       background: rgba(34,197,94,0.12);
       border: 1px solid rgba(34,197,94,0.32);
     }
+    .status-badge.showing {
+      color: #b45309;
+      background: rgba(245,158,11,0.14);
+      border: 1px solid rgba(245,158,11,0.36);
+    }
 
     /* Marks a seat that can only be bought at the kiosk, never online. */
     .kiosk-tag {
@@ -2566,6 +2571,16 @@
       return startUtc + SHOW_RUNTIME_MS;
     }
 
+    // Where a booking sits against its own showtime: still to come, running
+    // right now, or done. "done" is also what strikes the ledger row out.
+    function showStatusAt(startUtc, now) {
+      if (now >= showEndUtc(startUtc)) return "done";
+      if (now >= startUtc) return "showing";
+      return "pending";
+    }
+
+    const SHOW_STATUS_LABEL = { pending: "Upcoming", showing: "● Now showing", done: "✓ Finished" };
+
     function sameMovieToday(existing, requestedMovie) {
       const normalizedMovie = normalizeMovie(requestedMovie);
       return existing.filter((entry) => normalizeMovie(entry.movie) === normalizedMovie);
@@ -2690,9 +2705,9 @@
             </div>
             ${bookings.map((booking) => {
               if (booking.id === editingBookingId) return ledgerEditForm(booking);
-              const finished = Date.now() >= showEndUtc(booking.timestampUtc);
+              const showStatus = showStatusAt(booking.timestampUtc, Date.now());
               return `
-              <div class="ledger-item${finished ? " finished" : ""}" data-ts="${booking.timestampUtc}">
+              <div class="ledger-item${showStatus === "done" ? " finished" : ""}" data-ts="${booking.timestampUtc}">
                 <div>
                   <strong>${escapeHtml(booking.movie)}${booking.kiosk ? `<span class="kiosk-tag">Kiosk</span>` : ""}</strong>
                   <span>${escapeHtml(booking.account)} · ${escapeHtml(booking.theater)}</span>
@@ -2702,7 +2717,7 @@
                   <span>${escapeHtml(booking.date)}</span>
                 </div>
                 <div>
-                  <strong class="status-badge ${finished ? "done" : "pending"}">${finished ? "✓ Finished" : "Upcoming"}</strong>
+                  <strong class="status-badge ${showStatus}">${SHOW_STATUS_LABEL[showStatus]}</strong>
                   <span>${escapeHtml(formatInZone(new Date(booking.timestampUtc), booking.timeZone))}</span>
                 </div>
                 <div class="ledger-actions">
@@ -2717,20 +2732,21 @@
       }).join("");
     }
 
-    // Flips ledger rows to "finished" (struck through) 90 minutes after each
-    // showtime, when the show is actually over — not the moment it starts.
+    // Moves ledger rows through Upcoming -> Now showing -> Finished as the
+    // clock passes each showtime and then its 90-minute end.
     // Runs on a timer and mutates existing rows in place instead of re-rendering,
     // so an open inline edit form is never disturbed (edit rows carry no data-ts).
     function refreshFinishedStates() {
       const now = Date.now();
       document.querySelectorAll(".ledger-item[data-ts]").forEach((item) => {
-        const finished = now >= showEndUtc(Number(item.dataset.ts));
-        item.classList.toggle("finished", finished);
+        const showStatus = showStatusAt(Number(item.dataset.ts), now);
+        item.classList.toggle("finished", showStatus === "done");
         const badge = item.querySelector(".status-badge");
         if (badge) {
-          badge.textContent = finished ? "✓ Finished" : "Upcoming";
-          badge.classList.toggle("done", finished);
-          badge.classList.toggle("pending", !finished);
+          badge.textContent = SHOW_STATUS_LABEL[showStatus];
+          badge.classList.toggle("pending", showStatus === "pending");
+          badge.classList.toggle("showing", showStatus === "showing");
+          badge.classList.toggle("done", showStatus === "done");
         }
       });
     }
