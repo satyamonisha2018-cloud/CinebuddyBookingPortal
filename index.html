@@ -1323,6 +1323,29 @@
       border: 1px solid rgba(34,197,94,0.32);
     }
 
+    /* Marks a seat that can only be bought at the kiosk, never online. */
+    .kiosk-tag {
+      display: inline-block;
+      margin-left: 7px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      vertical-align: middle;
+      color: var(--cyan);
+      background: var(--cyan-soft);
+      border: 1px solid rgba(2,132,199,0.32);
+    }
+
+    .account-card.available.kiosk {
+      border-color: rgba(2,132,199,0.32);
+      background: linear-gradient(180deg, rgba(2,132,199,0.11), var(--surface-2));
+    }
+    .account-card.available.kiosk::before { background: var(--cyan); box-shadow: 0 0 12px rgba(2,132,199,0.55); }
+
     .muted { color: var(--muted); }
     .small { font-size: 0.88rem; }
     .footerbar { display: none; }
@@ -1478,6 +1501,9 @@
     .account-card.unavailable { background: rgba(220,38,38,0.05); border-color: rgba(220,38,38,0.28); }
     .account-card.unavailable:hover { box-shadow: var(--shadow); }
     .account-card.unavailable::before { background: var(--danger); box-shadow: none; }
+    .account-card.available.kiosk { background: rgba(2,132,199,0.06); border-color: rgba(2,132,199,0.32); }
+    .account-card.available.kiosk::before { background: var(--cyan); box-shadow: none; }
+    .ledger-item .kiosk-tag { color: var(--cyan); background: var(--cyan-soft); border-color: rgba(2,132,199,0.3); }
 
     .ledger-item { background: var(--surface-2); }
     .ledger-item:hover { transform: none; box-shadow: none; border-color: var(--line-strong); background: var(--surface-3); }
@@ -2519,38 +2545,46 @@
       updateSelectedAccountCount();
     }
 
-    function conflictSummary(existing, requestedMovie) {
+    // Booking a movie the account already has today is no longer a dead end:
+    // the kiosk will still sell that seat, provided the 90-minute gap holds.
+    // Online stays one-per-movie-per-day, so those accounts come back tagged
+    // "kiosk" rather than available outright.
+    function sameMovieToday(existing, requestedMovie) {
       const normalizedMovie = normalizeMovie(requestedMovie);
-      const sameMovie = existing.find((entry) => normalizeMovie(entry.movie) === normalizedMovie);
-      if (sameMovie) {
-        return {
-          available: false,
-          reason: `Already booked this movie today at ${sameMovie.time} ${timezoneLabel[sameMovie.timeZone]}.`,
-          conflict: sameMovie,
-          type: "movie",
-        };
-      }
-      return { available: true, reason: "Open for booking.", conflict: null, type: "none" };
+      return existing.find((entry) => normalizeMovie(entry.movie) === normalizedMovie) || null;
     }
 
     function evaluateAccount(account, dateStr, movie, timeStr, zone) {
       const bookings = getDay(dateStr).filter((entry) => entry.account === account);
-      const movieCheck = conflictSummary(bookings, movie);
-      if (!movieCheck.available) return movieCheck;
-
       const requestedUtc = zonedToUtcTimestamp(dateStr, timeStr, zone);
+
+      // The 90-minute gap is the hard rule — it blocks the kiosk just as it
+      // blocks online, so it is checked before the same-movie downgrade.
       const conflict = bookings.find((entry) => Math.abs(entry.timestampUtc - requestedUtc) < 90 * 60 * 1000);
       if (conflict) {
         const deltaMinutes = Math.round(Math.abs(conflict.timestampUtc - requestedUtc) / 60000);
         return {
           available: false,
+          kiosk: false,
           reason: `Blocked by ${conflict.movie} at ${conflict.time} ${timezoneLabel[conflict.timeZone]} (${deltaMinutes} minute gap).`,
           conflict,
           type: "gap",
         };
       }
 
-      return { available: true, reason: "Meets both rules.", conflict: null, type: "none" };
+      // Same movie already on this account today, but the gap is clear — kiosk only.
+      const repeat = sameMovieToday(bookings, movie);
+      if (repeat) {
+        return {
+          available: true,
+          kiosk: true,
+          reason: `Kiosk only — already booked this movie today at ${repeat.time} ${timezoneLabel[repeat.timeZone]}. The 90-minute gap is clear.`,
+          conflict: repeat,
+          type: "kiosk",
+        };
+      }
+
+      return { available: true, kiosk: false, reason: "Meets both rules.", conflict: null, type: "none" };
     }
 
     let editingBookingId = null;
@@ -2612,7 +2646,7 @@
               return `
               <div class="ledger-item${finished ? " finished" : ""}" data-ts="${booking.timestampUtc}">
                 <div>
-                  <strong>${escapeHtml(booking.movie)}</strong>
+                  <strong>${escapeHtml(booking.movie)}${booking.kiosk ? `<span class="kiosk-tag">Kiosk</span>` : ""}</strong>
                   <span>${escapeHtml(booking.account)} · ${escapeHtml(booking.theater)}</span>
                 </div>
                 <div>
@@ -2681,12 +2715,14 @@
       }));
 
       const available = results.filter((entry) => entry.available);
+      const kioskOnly = available.filter((entry) => entry.kiosk);
+      const onlineReady = available.length - kioskOnly.length;
       const requestedStamp = prettyTimestamp(dateStr, timeStr, zone);
 
       els.checkSummary.className = `result-banner ${available.length ? "good" : "bad"}`;
       els.checkSummary.innerHTML = available.length
-        ? `<strong>${available.length} accounts are available.</strong> ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`
-        : `<strong>No accounts are available.</strong> Every account is blocked by the same-movie rule or the 90-minute gap rule for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
+        ? `<strong>${available.length} ${available.length === 1 ? "account is" : "accounts are"} available.</strong> ${onlineReady} online${kioskOnly.length ? `, ${kioskOnly.length} kiosk only` : ""} · ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`
+        : `<strong>No accounts are available.</strong> Every account is inside the 90-minute gap for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
 
       // "Book this" is only offered when there's a real movie + date + time to save.
       const movieClean = (movie || "").trim();
@@ -2701,10 +2737,10 @@
       } : null;
 
       els.accountGrid.innerHTML = results.map((entry) => `
-        <article class="account-card ${entry.available ? "available" : "unavailable"}">
-          <div class="account-name">${escapeHtml(entry.account)}</div>
+        <article class="account-card ${entry.available ? (entry.kiosk ? "available kiosk" : "available") : "unavailable"}">
+          <div class="account-name">${escapeHtml(entry.account)}${entry.kiosk ? `<span class="kiosk-tag">Kiosk</span>` : ""}</div>
           <div class="reason">${escapeHtml(entry.reason)}</div>
-          ${entry.available && canBook ? `<button type="button" class="book-this-btn" data-account="${escapeHtml(entry.account)}">Book this</button>` : ""}
+          ${entry.available && canBook ? `<button type="button" class="book-this-btn" data-account="${escapeHtml(entry.account)}">${entry.kiosk ? "Book at kiosk" : "Book this"}</button>` : ""}
         </article>
       `).join("");
     }
@@ -2724,11 +2760,12 @@
       addBooking(makeBookingRecord({
         date: ctx.date, time: ctx.time, zone, zoneSource: ctx.zoneInfo.source,
         account, movie: ctx.movie, theater: ctx.theater, stateOrRegion: ctx.stateOrRegion,
+        kiosk: check.kiosk,
       }));
 
       renderLedger(ctx.date);
       renderAvailability(ctx.date, ctx.time, ctx.zoneInfo, ctx.movie);
-      showToast(`✓ Booked "${ctx.movie}" on ${account}`);
+      showToast(`✓ Booked "${ctx.movie}" on ${account}${check.kiosk ? " — buy at the kiosk" : ""}`);
     }
 
     /* ===== Custom clickable time picker (same UX on phone & desktop) ===== */
@@ -2886,7 +2923,7 @@
 
     // Single source of truth for the shape of a booking record (used by both
     // the booking form and the one-tap "Book this" button in the checker).
-    function makeBookingRecord({ date, time, zone, zoneSource, account, movie, theater, stateOrRegion }) {
+    function makeBookingRecord({ date, time, zone, zoneSource, account, movie, theater, stateOrRegion, kiosk }) {
       return {
         id: newBookingId(),
         date,
@@ -2898,6 +2935,7 @@
         movie,
         theater,
         stateOrRegion,
+        kiosk: Boolean(kiosk),
         timestampUtc: zonedToUtcTimestamp(date, time, zone),
       };
     }
@@ -3598,22 +3636,30 @@
         return;
       }
 
-      // Guardrail: warn before saving anything that breaks the rules.
-      const clashes = selectedAccounts
-        .map((account) => ({ account, result: evaluateAccount(account, date, movie, time, timeZone) }))
-        .filter((x) => !x.result.available);
-      if (clashes.length) {
-        const lines = clashes.map((c) => `• ${c.account}: ${c.result.reason}`).join("\n");
-        const proceed = confirm(
-          `This booking clashes for ${clashes.length} account${clashes.length > 1 ? "s" : ""}:\n\n${lines}\n\nSave anyway?`
-        );
+      // Guardrail: warn before saving anything that breaks the rules, and call
+      // out the accounts that can only take this seat at the kiosk.
+      const verdicts = selectedAccounts
+        .map((account) => ({ account, result: evaluateAccount(account, date, movie, time, timeZone) }));
+      const clashes = verdicts.filter((x) => !x.result.available);
+      const kioskOnly = verdicts.filter((x) => x.result.available && x.result.kiosk);
+      if (clashes.length || kioskOnly.length) {
+        const parts = [];
+        if (clashes.length) {
+          parts.push(`This booking clashes for ${clashes.length} account${clashes.length > 1 ? "s" : ""}:\n${clashes.map((c) => `• ${c.account}: ${c.result.reason}`).join("\n")}`);
+        }
+        if (kioskOnly.length) {
+          parts.push(`Kiosk only for ${kioskOnly.length} account${kioskOnly.length > 1 ? "s" : ""} — this movie is already booked today, so buy these at the kiosk:\n${kioskOnly.map((c) => `• ${c.account}`).join("\n")}`);
+        }
+        const proceed = confirm(`${parts.join("\n\n")}\n\n${clashes.length ? "Save anyway?" : "Save these bookings?"}`);
         if (!proceed) return;
       }
 
+      const kioskAccounts = new Set(kioskOnly.map((x) => x.account));
       selectedAccounts.forEach((account) => {
         addBooking(makeBookingRecord({
           date, time, zone: timeZone, zoneSource: zoneInfo.source,
           account, movie, theater, stateOrRegion,
+          kiosk: kioskAccounts.has(account),
         }));
       });
 
