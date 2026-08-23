@@ -2099,6 +2099,32 @@
       });
     }
 
+    // The midnight timer below can be frozen by a backgrounded phone, and it can
+    // also fire a hair before the clock actually turns. So the day is re-checked
+    // on the 30-second ticker and whenever the app comes back into view: if it
+    // has changed, drop the days now past and redraw. Pickers the user set to a
+    // future date are left alone; only ones pointing at a bygone day move up.
+    let lastSeenDay = todayLocalDate();
+    function catchUpIfDayChanged() {
+      const today = todayLocalDate();
+      if (today === lastSeenDay) return;
+      lastSeenDay = today;
+      purgePastDays(state.days);
+      state.sessionDate = today;
+      saveState();
+      if (els.bookingDate.value && els.bookingDate.value < today) els.bookingDate.value = today;
+      if (els.checkDate.value && els.checkDate.value < today) {
+        els.checkDate.value = today;
+        updateDateQuick();
+      }
+      renderLedger(currentDayFromInputs());
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") catchUpIfDayChanged();
+    });
+    window.addEventListener("focus", catchUpIfDayChanged);
+
     function scheduleMidnightReset() {
       const now = new Date();
       const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
@@ -2108,6 +2134,7 @@
         state.sessionDate = todayLocalDate();
         saveState();
         const today = todayLocalDate();
+        lastSeenDay = today;
         els.bookingDate.value = today;
         els.checkDate.value = today;
         updateDateQuick();
@@ -2840,13 +2867,16 @@
       }).join("");
     }
 
-    // One ticket per saved booking, tallied per account. The ledger only keeps
-    // today onward — older days are purged at rollover — so this is "from today".
+    // One ticket per saved booking, tallied per account, over today and the days
+    // ahead — the same window the ledger draws. Yesterday is skipped rather than
+    // trusted to have been purged already, so the moment the date turns these
+    // counts drop it too, with or without a reload.
     function accountTicketCounts() {
       const today = todayLocalDate();
       const blank = () => ({ total: 0, today: 0, later: 0, shows: [] });
       const counts = new Map(ACCOUNTS.map((a) => [a, blank()]));
       for (const dateStr of Object.keys(state.days)) {
+        if (dateStr < today) continue;
         for (const booking of state.days[dateStr] || []) {
           // An account removed from ACCOUNTS can still hold bookings; show it too.
           if (!counts.has(booking.account)) counts.set(booking.account, blank());
@@ -2916,6 +2946,7 @@
     // Runs on a timer and mutates existing rows in place instead of re-rendering,
     // so an open inline edit form is never disturbed (edit rows carry no data-ts).
     function refreshFinishedStates() {
+      catchUpIfDayChanged();
       const now = Date.now();
       document.querySelectorAll(".ledger-item[data-ts]").forEach((item) => {
         const showStatus = showStatusAt(Number(item.dataset.ts), now);
