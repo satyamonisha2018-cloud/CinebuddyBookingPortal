@@ -267,6 +267,37 @@
       font-variant-numeric: tabular-nums;
       color: var(--accent);
     }
+    .usage-shows {
+      list-style: none;
+      margin: 9px 0 1px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .usage-shows li {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      font-size: 0.78rem;
+      padding-top: 5px;
+      border-top: 1px dashed var(--line);
+    }
+    .usage-shows li:first-child { border-top: 0; padding-top: 0; }
+    .us-when {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .us-movie {
+      font-weight: 700;
+      color: var(--text);
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .usage-shows .kiosk-tag { margin-left: 0; font-size: 0.6rem; padding: 1px 6px; }
+
     .usage-row.zero { background: var(--surface-3); border-style: dashed; }
     .usage-row.zero .usage-count { color: var(--muted); font-weight: 700; }
     .usage-row.zero .usage-bar { display: none; }
@@ -2813,22 +2844,40 @@
     // today onward — older days are purged at rollover — so this is "from today".
     function accountTicketCounts() {
       const today = todayLocalDate();
-      const counts = new Map(ACCOUNTS.map((a) => [a, { total: 0, today: 0, later: 0 }]));
+      const blank = () => ({ total: 0, today: 0, later: 0, shows: [] });
+      const counts = new Map(ACCOUNTS.map((a) => [a, blank()]));
       for (const dateStr of Object.keys(state.days)) {
         for (const booking of state.days[dateStr] || []) {
           // An account removed from ACCOUNTS can still hold bookings; show it too.
-          if (!counts.has(booking.account)) counts.set(booking.account, { total: 0, today: 0, later: 0 });
+          if (!counts.has(booking.account)) counts.set(booking.account, blank());
           const c = counts.get(booking.account);
           c.total += 1;
           if (dateStr === today) c.today += 1;
           else if (dateStr > today) c.later += 1;
+          c.shows.push(booking);
         }
       }
+      for (const c of counts.values()) c.shows.sort((a, b) => a.timestampUtc - b.timestampUtc);
       return counts;
+    }
+
+    const SHOW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function shortZone(timeZone) {
+      return (timezoneLabel[timeZone] || timeZone).split(" ")[0];
+    }
+
+    // "Today" for today's shows, "Aug 25" otherwise — the year is never in doubt
+    // here because the ledger only holds today and the days ahead.
+    function showDayLabel(dateStr, today) {
+      if (dateStr === today) return "Today";
+      const [, mo, dd] = dateStr.split("-");
+      return `${SHOW_MONTHS[+mo - 1]} ${+dd}`;
     }
 
     function renderAccountUsage() {
       if (!els.accountUsage) return;
+      const today = todayLocalDate();
       const rows = [...accountTicketCounts().entries()];
       const total = rows.reduce((sum, [, c]) => sum + c.total, 0);
       const busiest = rows.reduce((max, [, c]) => Math.max(max, c.total), 0);
@@ -2850,6 +2899,12 @@
             <div class="usage-name">${escapeHtml(account)}</div>
             <div class="usage-meta">${parts.join(" · ") || "no tickets yet"}</div>
             ${c.total ? `<div class="usage-bar"><div class="usage-fill" style="width:${Math.round((c.total / busiest) * 100)}%"></div></div>` : ""}
+            ${c.shows.length ? `<ul class="usage-shows">${c.shows.map((b) => `
+              <li>
+                <span class="us-when">${escapeHtml(showDayLabel(b.date, today))} ${escapeHtml(fmt12(b.time))} ${escapeHtml(shortZone(b.timeZone))}</span>
+                <span class="us-movie">${escapeHtml(b.movie)}</span>
+                ${b.kiosk ? `<span class="kiosk-tag">Kiosk</span>` : ""}
+              </li>`).join("")}</ul>` : ""}
           </div>
           <div class="usage-count">${c.total}</div>
         </div>`;
