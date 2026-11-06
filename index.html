@@ -352,6 +352,65 @@
     .usage-row.zero .usage-count { color: var(--muted); font-weight: 700; }
     .usage-row.zero .usage-bar { display: none; }
 
+    /* Account on/off switch */
+    .usage-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .acct-toggle-btn {
+      appearance: none;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: none;
+      min-height: 0;
+      width: auto;
+    }
+    .acct-toggle-btn.deactivate {
+      color: var(--danger);
+      background: rgba(220,38,38,0.08);
+      border: 1px solid rgba(220,38,38,0.3);
+    }
+    .acct-toggle-btn.deactivate:hover { background: rgba(220,38,38,0.14); }
+    .acct-toggle-btn.activate {
+      color: #fff;
+      background: var(--success);
+      border: 1px solid var(--success);
+    }
+    .acct-toggle-btn.activate:hover { filter: brightness(1.08); }
+    .usage-divider {
+      margin: 10px 2px 2px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .usage-row.inactive { opacity: 0.62; border-style: dashed; }
+    .usage-row.inactive .acct-toggle-btn { opacity: 1; }
+    .usage-row.inactive .usage-fill { background: var(--muted); }
+    .usage-row.inactive .usage-count { color: var(--muted); }
+    .inactive-tag {
+      display: inline-block;
+      margin-left: 7px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      vertical-align: middle;
+      color: var(--danger);
+      background: rgba(220,38,38,0.08);
+      border: 1px solid rgba(220,38,38,0.28);
+    }
+    .hidden-note { color: var(--muted); font-weight: 600; }
+
     /* Horizontal swipe pager: page 0 = form, page 1 = saved, page 2 = accounts */
     .pager {
       flex: 1 1 auto;
@@ -1886,6 +1945,72 @@
       "Monisha45": "December 25, 2000",
     };
 
+    /* ===== Account on/off switch =====
+       A deactivated account is left out of "Check accounts" (and the booking
+       pickers) until it is activated again from the Accounts tab. Its saved
+       bookings are untouched. The list of deactivated accounts is kept locally
+       and, when cloud sync is on, in one reserved row of the bookings table so
+       every device agrees. That row's id is fixed and its date is far in the
+       future, so the nightly purge of past days never removes it. */
+    const INACTIVE_KEY = "cinebuddy.inactiveAccounts.v1";
+    const SETTINGS_ROW_ID = "00000000-0000-4000-8000-00000000ac01";
+    const SETTINGS_ROW_DATE = "9999-12-31";
+
+    let inactiveAccounts = new Set();
+    try {
+      const saved = JSON.parse(localStorage.getItem(INACTIVE_KEY) || "[]");
+      if (Array.isArray(saved)) inactiveAccounts = new Set(saved);
+    } catch {}
+
+    function isAccountActive(account) {
+      return !inactiveAccounts.has(account);
+    }
+
+    function activeAccounts() {
+      return ACCOUNTS.filter(isAccountActive);
+    }
+
+    function saveInactiveLocal() {
+      try { localStorage.setItem(INACTIVE_KEY, JSON.stringify([...inactiveAccounts])); } catch {}
+    }
+
+    // Replace the settings row (delete + insert, the two writes this app
+    // already relies on, so no extra table permissions are needed).
+    async function cloudSaveAccountSettings() {
+      if (!sb) return;
+      const data = { type: "account-settings", inactive: [...inactiveAccounts], updatedAt: Date.now() };
+      const del = await sb.from("bookings").delete().eq("id", SETTINGS_ROW_ID);
+      if (del.error) console.warn("Cloud settings clear failed:", del.error.message);
+      const ins = await sb.from("bookings").insert({ id: SETTINGS_ROW_ID, date: SETTINGS_ROW_DATE, data });
+      if (ins.error) console.warn("Cloud settings save failed:", ins.error.message);
+    }
+
+    // Cloud copy wins whenever it exists; returns true if anything changed.
+    function applyCloudAccountSettings(data) {
+      const next = new Set(Array.isArray(data && data.inactive) ? data.inactive : []);
+      const same = next.size === inactiveAccounts.size && [...next].every((a) => inactiveAccounts.has(a));
+      if (same) return false;
+      inactiveAccounts = next;
+      saveInactiveLocal();
+      return true;
+    }
+
+    function setAccountActive(account, active) {
+      if (active) inactiveAccounts.delete(account);
+      else inactiveAccounts.add(account);
+      saveInactiveLocal();
+      cloudSaveAccountSettings();
+      refreshAccountViews();
+      showToast(active ? `✓ ${account} is active again` : `${account} deactivated — hidden from booking checks`);
+    }
+
+    // Redraw everything that lists accounts.
+    function refreshAccountViews() {
+      populateAccounts();
+      renderAccountUsage();
+      renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
+    }
+
     const timezoneLabel = {
       "America/Chicago": "CST / Central",
       "America/New_York": "EST / Eastern",
@@ -2111,7 +2236,13 @@
       const { data, error } = await sb.from("bookings").select("id,date,data");
       if (error) { console.warn("Cloud fetch failed:", error.message); return null; }
       const days = {};
+      cloudFetchAll.settings = null;
       for (const row of data) {
+        // The account on/off row is settings, not a booking.
+        if (row.id === SETTINGS_ROW_ID || (row.data && row.data.type === "account-settings")) {
+          cloudFetchAll.settings = row.data || {};
+          continue;
+        }
         const rec = row.data || {};
         rec.id = rec.id || row.id;
         rec.date = rec.date || row.date;
@@ -2139,6 +2270,12 @@
       const cloudDays = await cloudFetchAll();
       if (cloudDays === null) return; // offline / error → keep whatever we have
 
+      // Account on/off: take the cloud copy; if there is none yet, seed it
+      // from this device so a choice made before sync is not lost.
+      let accountsChanged = false;
+      if (cloudFetchAll.settings) accountsChanged = applyCloudAccountSettings(cloudFetchAll.settings);
+      else if (migrateLocal && inactiveAccounts.size) cloudSaveAccountSettings();
+
       if (migrateLocal) {
         const cloudIds = new Set();
         for (const d of Object.keys(cloudDays)) for (const b of cloudDays[d]) cloudIds.add(b.id);
@@ -2164,6 +2301,7 @@
       seedCatalogFromDays();
       saveState();
       refreshSuggestionMenus();
+      if (accountsChanged) populateAccounts();
       const active = currentDayFromInputs();
       renderLedger(active);
       renderAvailability(els.checkDate.value, els.checkTime.value, getCheckZoneInfo(), els.checkMovie.value.trim());
@@ -2752,15 +2890,21 @@
       if (els.bookingCount) els.bookingCount.textContent = String(getDay(dateStr).length);
     }
 
+    // Only active accounts can be picked. A redraw keeps whatever was ticked
+    // (minus anything just deactivated); the very first draw ticks the first one.
+    let accountsPopulated = false;
     function populateAccounts() {
-      els.bookingAccountOptions.innerHTML = ACCOUNTS.map((account, index) => `
+      const keep = accountsPopulated ? new Set(getSelectedBookingAccounts()) : null;
+      const list = activeAccounts();
+      els.bookingAccountOptions.innerHTML = list.map((account, index) => `
         <label class="account-option">
-          <input type="checkbox" name="bookingAccounts" value="${escapeHtml(account)}" ${index === 0 ? "checked" : ""} />
-          <span class="acct-num">${index + 1}</span>
+          <input type="checkbox" name="bookingAccounts" value="${escapeHtml(account)}" ${(keep ? keep.has(account) : index === 0) ? "checked" : ""} />
+          <span class="acct-num">${ACCOUNTS.indexOf(account) + 1}</span>
           <span class="acct-label">${escapeHtml(account)}</span>
         </label>
       `).join("");
-      if (els.accountCount) els.accountCount.textContent = String(ACCOUNTS.length);
+      accountsPopulated = true;
+      if (els.accountCount) els.accountCount.textContent = String(list.length);
       updateSelectedAccountCount();
     }
 
@@ -2875,7 +3019,9 @@
     // Inline edit form shown in place of a saved booking row.
     function ledgerEditForm(booking) {
       const today = todayLocalDate();
-      const accts = ACCOUNTS.includes(booking.account) ? ACCOUNTS : [booking.account, ...ACCOUNTS];
+      // Active accounts only, plus the one this booking already sits on.
+      const live = activeAccounts();
+      const accts = live.includes(booking.account) ? live : [booking.account, ...live];
       const opts = accts.map((a) =>
         `<option value="${escapeHtml(a)}"${a === booking.account ? " selected" : ""}>${escapeHtml(a)}</option>`).join("");
       return `
@@ -2998,28 +3144,49 @@
     function renderAccountUsage() {
       if (!els.accountUsage) return;
       const today = todayLocalDate();
-      const rows = [...accountTicketCounts().entries()];
+      const allRows = [...accountTicketCounts().entries()];
+      // Active accounts first, deactivated ones gathered underneath.
+      const rows = [
+        ...allRows.filter(([a]) => isAccountActive(a)),
+        ...allRows.filter(([a]) => !isAccountActive(a)),
+      ];
       const total = rows.reduce((sum, [, c]) => sum + c.total, 0);
       const busiest = rows.reduce((max, [, c]) => Math.max(max, c.total), 0);
+      const offCount = rows.filter(([a]) => !isAccountActive(a)).length;
+      const acctLabel = offCount
+        ? `${rows.length - offCount} active · ${offCount} deactivated`
+        : `${rows.length} accounts`;
 
       const usageCountEl = document.getElementById("usageCount");
       if (usageCountEl) usageCountEl.textContent = String(total);
       els.usageSummary.textContent = total
-        ? `${rows.length} accounts · ${total} ${total === 1 ? "ticket" : "tickets"} booked, today onward`
-        : `${rows.length} accounts · nothing booked yet`;
+        ? `${acctLabel} · ${total} ${total === 1 ? "ticket" : "tickets"} booked, today onward`
+        : `${acctLabel} · nothing booked yet`;
 
-      els.accountUsage.innerHTML = rows.map(([account, c], index) => {
+      let dividerShown = false;
+      els.accountUsage.innerHTML = rows.map(([account, c]) => {
         const parts = [];
         if (c.today) parts.push(`${c.today} today`);
         if (c.later) parts.push(`${c.later} upcoming`);
         const open = account === openQrAccount;
         const qr = ACCOUNT_QR[account];
-        return `
-        <div class="usage-row${c.total ? "" : " zero"}${open ? " open" : ""}" data-account="${escapeHtml(account)}"
+        const active = isAccountActive(account);
+        const num = ACCOUNTS.indexOf(account) + 1;
+        let divider = "";
+        if (!active && !dividerShown) {
+          dividerShown = true;
+          divider = `<div class="usage-divider">Deactivated — hidden from booking checks</div>`;
+        }
+        // Accounts that only linger because of old bookings get no switch.
+        const toggle = ACCOUNTS.includes(account)
+          ? `<button type="button" class="acct-toggle-btn ${active ? "deactivate" : "activate"}" data-account="${escapeHtml(account)}" data-active="${active}">${active ? "Deactivate" : "Activate"}</button>`
+          : "";
+        return `${divider}
+        <div class="usage-row${c.total ? "" : " zero"}${open ? " open" : ""}${active ? "" : " inactive"}" data-account="${escapeHtml(account)}"
              role="button" tabindex="0" aria-expanded="${open}">
-          <span class="usage-num">${index + 1}</span>
+          <span class="usage-num">${num || "–"}</span>
           <div class="usage-main">
-            <div class="usage-name">${escapeHtml(account)}<span class="usage-chev" aria-hidden="true">▾</span></div>
+            <div class="usage-name">${escapeHtml(account)}${active ? "" : `<span class="inactive-tag">Off</span>`}<span class="usage-chev" aria-hidden="true">▾</span></div>
             <div class="usage-meta">${parts.join(" · ") || "no tickets yet"}</div>
             ${BIRTHDAYS[account] ? `<div class="usage-bday"><span class="cake">🎂</span>${escapeHtml(BIRTHDAYS[account])}</div>` : ""}
             ${c.total ? `<div class="usage-bar"><div class="usage-fill" style="width:${Math.round((c.total / busiest) * 100)}%"></div></div>` : ""}
@@ -3034,7 +3201,10 @@
                  <div class="qr-cap">${escapeHtml(account)}</div>`
               : `<div class="qr-empty">No QR code added for this account yet.</div>`}</div>` : ""}
           </div>
-          <div class="usage-count">${c.total}</div>
+          <div class="usage-side">
+            <div class="usage-count">${c.total}</div>
+            ${toggle}
+          </div>
         </div>`;
       }).join("");
     }
@@ -3051,11 +3221,25 @@
 
     if (els.accountUsage) {
       els.accountUsage.addEventListener("click", (event) => {
+        const toggleBtn = event.target.closest(".acct-toggle-btn");
+        if (toggleBtn) {
+          event.stopPropagation();
+          const account = toggleBtn.dataset.account;
+          const turnOn = toggleBtn.dataset.active !== "true";
+          if (!turnOn) {
+            const held = (accountTicketCounts().get(account) || { total: 0 }).total;
+            const note = held ? `\n\nIts ${held} saved ${held === 1 ? "ticket stays" : "tickets stay"} in Saved — nothing is deleted.` : "";
+            if (!confirm(`Deactivate ${account}?\n\nIt will not show up when you check available accounts until you activate it again.${note}`)) return;
+          }
+          setAccountActive(account, turnOn);
+          return;
+        }
         const row = event.target.closest(".usage-row");
         if (row) toggleAccountQr(row.dataset.account);
       });
       els.accountUsage.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target.closest(".acct-toggle-btn")) return; // the button handles its own keys
         const row = event.target.closest(".usage-row");
         if (!row) return;
         event.preventDefault();
@@ -3106,7 +3290,10 @@
       }
 
       const zone = zoneInfo.zone;
-      const results = ACCOUNTS.map((account) => ({
+      // Deactivated accounts are not shown here at all.
+      const hiddenCount = ACCOUNTS.length - activeAccounts().length;
+      const hiddenNote = hiddenCount ? ` <span class="hidden-note">· ${hiddenCount} deactivated ${hiddenCount === 1 ? "account" : "accounts"} hidden</span>` : "";
+      const results = activeAccounts().map((account) => ({
         account,
         ...evaluateAccount(account, dateStr, movie, timeStr, zone),
       }));
@@ -3118,8 +3305,10 @@
 
       els.checkSummary.className = `result-banner ${available.length ? "good" : "bad"}`;
       els.checkSummary.innerHTML = available.length
-        ? `<strong>${available.length} ${available.length === 1 ? "account is" : "accounts are"} available.</strong> ${onlineReady} online${kioskOnly.length ? `, ${kioskOnly.length} kiosk only` : ""} · ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`
-        : `<strong>No accounts are available.</strong> Every account is either still sitting through this movie or inside the 90-minute gap for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.`;
+        ? `<strong>${available.length} ${available.length === 1 ? "account is" : "accounts are"} available.</strong> ${onlineReady} online${kioskOnly.length ? `, ${kioskOnly.length} kiosk only` : ""} · ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.${hiddenNote}`
+        : results.length
+          ? `<strong>No accounts are available.</strong> Every account is either still sitting through this movie or inside the 90-minute gap for ${escapeHtml(requestedStamp)} in ${escapeHtml(timezoneLabel[zone])}.${hiddenNote}`
+          : `<strong>No active accounts.</strong> Every account is deactivated — turn one back on in the Accounts tab.`;
 
       // "Book this" is only offered when there's a real movie + date + time to save.
       const movieClean = (movie || "").trim();
